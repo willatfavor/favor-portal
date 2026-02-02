@@ -1,0 +1,91 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Gift, RecurringGift } from '@/types';
+import { createClient } from '@/lib/supabase/client';
+
+interface UseGivingReturn {
+  gifts: Gift[];
+  recurringGifts: RecurringGift[];
+  isLoading: boolean;
+  error: Error | null;
+  totalGiven: number;
+  ytdGiven: number;
+}
+
+export function useGiving(userId: string | undefined): UseGivingReturn {
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [recurringGifts, setRecurringGifts] = useState<RecurringGift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
+    async function fetchGiving() {
+      try {
+        setIsLoading(true);
+
+        // Fetch gifts
+        const { data: giftsData, error: giftsError } = await supabase
+          .from('giving_cache')
+          .select('*')
+          .eq('user_id', userId)
+          .order('gift_date', { ascending: false });
+
+        if (giftsError) throw giftsError;
+
+        // Fetch recurring gifts
+        const { data: recurringData, error: recurringError } = await supabase
+          .from('recurring_gifts')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active');
+
+        if (recurringError) throw recurringError;
+
+        setGifts(giftsData?.map(g => ({
+          id: g.id,
+          userId: g.user_id,
+          amount: Number(g.amount),
+          date: g.gift_date,
+          designation: g.designation,
+          blackbaudGiftId: g.blackbaud_gift_id || undefined,
+          isRecurring: g.is_recurring,
+          receiptSent: g.receipt_sent,
+        })) || []);
+
+        setRecurringGifts(recurringData?.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          amount: Number(r.amount),
+          frequency: r.frequency as any,
+          nextChargeDate: r.next_charge_date,
+          stripeSubscriptionId: r.stripe_subscription_id,
+          status: r.status as any,
+          createdAt: r.created_at,
+        })) || []);
+
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchGiving();
+  }, [userId, supabase]);
+
+  const totalGiven = gifts.reduce((sum, g) => sum + g.amount, 0);
+  
+  const currentYear = new Date().getFullYear();
+  const ytdGiven = gifts
+    .filter(g => new Date(g.date).getFullYear() === currentYear)
+    .reduce((sum, g) => sum + g.amount, 0);
+
+  return { gifts, recurringGifts, isLoading, error, totalGiven, ytdGiven };
+}

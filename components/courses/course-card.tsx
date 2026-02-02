@@ -1,0 +1,87 @@
+"use client";
+
+import { Course } from "@/types";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Play, Clock, BookOpen } from "lucide-react";
+import Link from "next/link";
+
+interface CourseCardProps {
+  course: Course;
+  progress: number;
+  totalModules: number;
+}
+
+export function CourseCard({ course, progress, totalModules }: CourseCardProps) {
+  const progressPercentage = totalModules > 0 ? (progress / totalModules) * 100 : 0;
+  const isCompleted = progressPercentage === 100;
+  const isStarted = progress > 0;
+
+  return (
+    <Card className="flex flex-col overflow-hidden">
+      {/* Thumbnail */}
+      <div className="relative aspect-video bg-gradient-to-br from-[#2b4d24]/20 to-[#2b4d24]/10">
+        {course.thumbnailUrl ? (
+          <img
+            src={course.thumbnailUrl}
+            alt={course.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <BookOpen className="h-12 w-12 text-[#2b4d24]/30" />
+          </div>
+        )}
+        <Badge className="absolute right-2 top-2 bg-[#2b4d24] text-[#FFFEF9]">
+          {course.accessLevel.replace("_", " ")}
+        </Badge>
+      </div>
+
+      <CardHeader className="pb-2">
+        <CardTitle className="font-['Cormorant_Garamond'] text-xl line-clamp-1">
+          {course.title}
+        </CardTitle>
+        <CardDescription className="line-clamp-2">
+          {course.description}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="flex-1 space-y-4">
+        {/* Progress */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-[#666666]">
+              {isCompleted ? "Completed" : isStarted ? "In Progress" : "Not Started"}
+            </span>
+            <span className="text-[#1a1a1a]">
+              {progress}/{totalModules} modules
+            </span>
+          </div>
+          <Progress value={progressPercentage} />
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-4 text-xs text-[#666666]">
+          <span className="flex items-center gap-1">
+            <BookOpen className="h-3 w-3" />
+            {totalModules} modules
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            ~{totalModules * 15} mins
+          </span>
+        </div>
+
+        {/* Action Button */}
+        <Button className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]" asChild>
+          <Link href={`/courses/${course.id}`}>
+            <Play className="mr-2 h-4 w-4" />
+            {isCompleted ? "Review" : isStarted ? "Continue" : "Start Learning"}
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
