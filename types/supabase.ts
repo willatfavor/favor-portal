@@ -52,6 +52,7 @@ export interface Database {
           created_at?: string;
           last_login?: string | null;
         };
+        Relationships: [];
       };
       giving_cache: {
         Row: {
@@ -87,6 +88,7 @@ export interface Database {
           receipt_sent?: boolean;
           synced_at?: string;
         };
+        Relationships: [];
       };
       recurring_gifts: {
         Row: {
@@ -119,6 +121,7 @@ export interface Database {
           status?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       communication_preferences: {
         Row: {
@@ -190,6 +193,7 @@ export interface Database {
           last_synced_at?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       courses: {
         Row: {
@@ -219,6 +223,7 @@ export interface Database {
           sort_order?: number;
           created_at?: string;
         };
+        Relationships: [];
       };
       course_modules: {
         Row: {
@@ -248,6 +253,7 @@ export interface Database {
           sort_order?: number;
           duration_seconds?: number;
         };
+        Relationships: [];
       };
       user_course_progress: {
         Row: {
@@ -277,6 +283,7 @@ export interface Database {
           watch_time_seconds?: number;
           last_watched_at?: string | null;
         };
+        Relationships: [];
       };
       foundation_grants: {
         Row: {
@@ -315,6 +322,7 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       onboarding_surveys: {
         Row: {
@@ -344,6 +352,7 @@ export interface Database {
           church_connection?: boolean;
           completed_at?: string;
         };
+        Relationships: [];
       };
     };
     Views: {

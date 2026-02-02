@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Course, UserCourseProgress } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import type { Tables } from '@/types/database';
 
 interface UseCoursesReturn {
   courses: Course[];
@@ -30,7 +31,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
 
         if (coursesError) throw coursesError;
 
-        setCourses(coursesData?.map(c => ({
+        setCourses(coursesData?.map((c: Tables<'courses'>) => ({
           id: c.id,
           title: c.title,
           description: c.description,
@@ -48,7 +49,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
 
           if (progressError) throw progressError;
 
-          setProgress(progressData?.map(p => ({
+          setProgress(progressData?.map((p: Tables<'user_course_progress'>) => ({
             id: p.id,
             userId: p.user_id,
             moduleId: p.module_id,

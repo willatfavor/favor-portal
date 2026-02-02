@@ -5,22 +5,35 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export interface EmailOptions {
   to: string | string[];
   subject: string;
-  html?: string;
-  text?: string;
   from?: string;
 }
 
-export async function sendEmail(options: EmailOptions) {
+export type SendEmailOptions =
+  | (EmailOptions & { html: string; text?: string })
+  | (EmailOptions & { text: string; html?: never });
+
+function hasHtml(options: SendEmailOptions): options is EmailOptions & { html: string; text?: string } {
+  return typeof (options as { html?: string }).html === 'string';
+}
+
+export async function sendEmail(options: SendEmailOptions) {
   const from = options.from || 'Favor International <noreply@favorintl.org>';
   
   try {
-    const { data, error } = await resend.emails.send({
-      from,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    });
+    const { data, error } = hasHtml(options)
+      ? await resend.emails.send({
+          from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+        })
+      : await resend.emails.send({
+          from,
+          to: options.to,
+          subject: options.subject,
+          text: options.text,
+        });
 
     if (error) {
       console.error('Resend error:', error);

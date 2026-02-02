@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Gift, RecurringGift } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import type { Tables } from '@/types/database';
 
 interface UseGivingReturn {
   gifts: Gift[];
@@ -25,6 +26,7 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
       setIsLoading(false);
       return;
     }
+    const activeUserId = userId;
 
     async function fetchGiving() {
       try {
@@ -34,7 +36,7 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
         const { data: giftsData, error: giftsError } = await supabase
           .from('giving_cache')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', activeUserId)
           .order('gift_date', { ascending: false });
 
         if (giftsError) throw giftsError;
@@ -43,12 +45,12 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
         const { data: recurringData, error: recurringError } = await supabase
           .from('recurring_gifts')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', activeUserId)
           .eq('status', 'active');
 
         if (recurringError) throw recurringError;
 
-        setGifts(giftsData?.map(g => ({
+        setGifts(giftsData?.map((g: Tables<'giving_cache'>) => ({
           id: g.id,
           userId: g.user_id,
           amount: Number(g.amount),
@@ -59,7 +61,7 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
           receiptSent: g.receipt_sent,
         })) || []);
 
-        setRecurringGifts(recurringData?.map(r => ({
+        setRecurringGifts(recurringData?.map((r: Tables<'recurring_gifts'>) => ({
           id: r.id,
           userId: r.user_id,
           amount: Number(r.amount),

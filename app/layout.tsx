@@ -6,14 +6,14 @@ import { Toaster } from "@/components/ui/sonner";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-cormorant",
   display: "swap",
 });
 
 const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-montserrat",
   display: "swap",
 });

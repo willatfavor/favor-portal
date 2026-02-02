@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { FoundationGrant } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import type { Tables } from '@/types/database';
 
 interface UseGrantsReturn {
   grants: FoundationGrant[];
@@ -23,6 +24,7 @@ export function useGrants(userId: string | undefined): UseGrantsReturn {
       setIsLoading(false);
       return;
     }
+    const activeUserId = userId;
 
     async function fetchGrants() {
       try {
@@ -31,12 +33,12 @@ export function useGrants(userId: string | undefined): UseGrantsReturn {
         const { data, error } = await supabase
           .from('foundation_grants')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', activeUserId)
           .order('start_date', { ascending: false });
 
         if (error) throw error;
 
-        setGrants(data?.map(g => ({
+        setGrants(data?.map((g: Tables<'foundation_grants'>) => ({
           id: g.id,
           userId: g.user_id,
           grantName: g.grant_name,

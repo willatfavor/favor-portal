@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import type { Tables } from '@/types/database';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the response
-    const formattedCourses = courses?.map(course => ({
+    const formattedCourses = courses?.map((course: Tables<'courses'>) => ({
       id: course.id,
       title: course.title,
       description: course.description,
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
       createdAt: course.created_at,
     })) || [];
 
-    const formattedProgress = progress?.map(p => ({
+    const formattedProgress = progress?.map((p: Tables<'user_course_progress'>) => ({
       moduleId: p.module_id,
       completed: p.completed,
       completedAt: p.completed_at,

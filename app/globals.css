@@ -3,14 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Favor Brand Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
-
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Montserrat', var(--font-geist-sans), system-ui, sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: var(--font-montserrat), var(--font-geist-sans), system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), Georgia, serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -95,10 +92,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Montserrat', system-ui, sans-serif;
+    font-family: var(--font-montserrat), system-ui, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: var(--font-cormorant), Georgia, serif;
     font-weight: 600;
   }
 }

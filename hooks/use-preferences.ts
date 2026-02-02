@@ -22,6 +22,7 @@ export function usePreferences(userId: string | undefined): UsePreferencesReturn
       setIsLoading(false);
       return;
     }
+    const activeUserId = userId;
 
     async function fetchPreferences() {
       try {
@@ -30,7 +31,7 @@ export function usePreferences(userId: string | undefined): UsePreferencesReturn
         const { data, error } = await supabase
           .from('communication_preferences')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', activeUserId)
           .single();
 
         if (error && error.code !== 'PGRST116') throw error;

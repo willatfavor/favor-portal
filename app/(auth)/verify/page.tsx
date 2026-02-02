@@ -1,11 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function VerifyPage() {
+function LoadingState() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#FFFEF9]">
+      <div className="text-center">
+        <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#2b4d24]" />
+        <p className="mt-4 text-[#666666]">Verifying your login...</p>
+      </div>
+    </div>
+  );
+}
+
+function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -86,5 +97,13 @@ export default function VerifyPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <VerifyContent />
+    </Suspense>
   );
 }
