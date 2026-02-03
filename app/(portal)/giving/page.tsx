@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
+import { useGrants } from "@/hooks/use-grants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,13 +14,32 @@ import { EmptyState } from "@/components/portal/empty-state";
 import { GiveNowDialog } from "@/components/portal/give-now-dialog";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 export default function GivingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-[#666666]">Loading your giving information...</div>
+        </div>
+      }
+    >
+      <GivingPageContent />
+    </Suspense>
+  );
+}
+
+function GivingPageContent() {
   const { user } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const { gifts, recurringGifts, totalGiven, ytdGiven, isLoading } = useGiving(user?.id, refreshKey);
+  const { grants, isLoading: isGrantsLoading } = useGrants(user?.id);
+  const userType = user?.constituentType ?? "individual";
+  const searchParams = useSearchParams();
+  const viewParam = (searchParams.get("view") ?? "").toLowerCase();
 
-  if (isLoading) {
+  if (isLoading || isGrantsLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-[#666666]">Loading your giving information...</div>
@@ -28,11 +48,96 @@ export default function GivingPage() {
   }
 
   const mostRecentGift = gifts[0];
+  const roleGivingPanel = (() => {
+    switch (userType) {
+      case "foundation": {
+        const activeGrants = grants.filter((g) => g.status === "active");
+        const totalGranted = activeGrants.reduce((sum, g) => sum + g.amount, 0);
+        const nextReport = activeGrants.find((g) => g.nextReportDue)?.nextReportDue;
+        return {
+          title: "Grant Stewardship",
+          items: [
+            { label: "Active Grants", value: `${activeGrants.length}`, description: "Currently funded initiatives" },
+            { label: "Total Granted", value: formatCurrency(totalGranted), description: "Active grant commitments" },
+            { label: "Next Report Due", value: nextReport ? new Date(nextReport).toLocaleDateString() : "None scheduled", description: "Upcoming reporting deadline" },
+          ],
+          action: { label: "View grant timeline", href: "/giving?view=grants" },
+        };
+      }
+      case "daf": {
+        const dafTotal = gifts
+          .filter((g) => g.designation.toLowerCase().includes("daf"))
+          .reduce((sum, g) => sum + g.amount, 0);
+        return {
+          title: "DAF Giving",
+          items: [
+            { label: "DAF Giving YTD", value: formatCurrency(dafTotal), description: "Based on portal activity" },
+            { label: "Recommendation Status", value: "Ready", description: "Next grant checklist prepared" },
+            { label: "Support Contact", value: user?.rddAssignment ?? "Partner Care", description: "DAF coordination" },
+          ],
+          action: { label: "Open DAF checklist", href: "/giving?view=daf" },
+        };
+      }
+      case "church":
+        return {
+          title: "Church Partner Giving",
+          items: [
+            { label: "Congregation Participation", value: "Growing", description: "Monthly giving is up 8%" },
+            { label: "Mission Sunday", value: "In planning", description: "Resources ready to download" },
+            { label: "Material Requests", value: "Ready", description: "Brochures and prayer guides available" },
+          ],
+          action: { label: "Open church resources", href: "/content?tag=church" },
+        };
+      case "ambassador":
+        return {
+          title: "Ambassador Giving",
+          items: [
+            { label: "Campaign Momentum", value: "Rising", description: "Engagement up 12% this month" },
+            { label: "Next Outreach", value: "Feb 18", description: "Partner spotlight live session" },
+            { label: "Assets Ready", value: "6 new", description: "Fresh stories and graphics" },
+          ],
+          action: { label: "View ambassador kit", href: "/content?tag=ambassador" },
+        };
+      case "volunteer":
+        return {
+          title: "Volunteer Support",
+          items: [
+            { label: "Active Tasks", value: "3", description: "Assignments in progress" },
+            { label: "Next Training", value: "Feb 20", description: "Volunteer welcome session" },
+            { label: "Resources", value: "Updated", description: "Orientation toolkit ready" },
+          ],
+          action: { label: "Open volunteer hub", href: "/content?tag=volunteer" },
+        };
+      case "major_donor":
+        return {
+          title: "Stewardship Focus",
+          items: [
+            { label: "Strategic Initiatives", value: "3 active", description: "Priority expansion projects" },
+            { label: "Briefing Packet", value: "Ready", description: "Financial summary prepared" },
+            { label: "RDD Contact", value: user?.rddAssignment ?? "Partner Care", description: "Schedule an update" },
+          ],
+          action: { label: "View stewardship packet", href: "/content?tag=stewardship" },
+        };
+      default:
+        return {
+          title: "Giving Focus",
+          items: [
+            { label: "Suggested Designation", value: "Where Most Needed", description: "Flexible impact support" },
+            { label: "Next Gift", value: "Ready", description: "Make a new gift anytime" },
+            { label: "Impact Reports", value: "Q4 2025", description: "Latest report ready" },
+          ],
+          action: { label: "View impact report", href: "/content?type=report" },
+        };
+    }
+  })();
+  const highlightPanel =
+    (viewParam === "grants" && userType === "foundation") ||
+    (viewParam === "daf" && userType === "daf");
 
   function downloadTaxReceipt() {
     const year = new Date().getFullYear() - 1;
     const text = [
-      `FAVOR INTERNATIONAL — ${year} ANNUAL TAX RECEIPT`,
+      `FAVOR INTERNATIONAL - ${year} ANNUAL TAX RECEIPT`,
       "=".repeat(48),
       "",
       `Donor: ${user?.firstName} ${user?.lastName}`,
@@ -164,6 +269,25 @@ export default function GivingPage() {
 
         {/* Right column */}
         <div className="space-y-6">
+          {roleGivingPanel && (
+            <Card className={`glass-pane ${highlightPanel ? "ring-1 ring-[#2b4d24]/30" : ""}`}>
+              <CardHeader className="pb-3">
+                <CardTitle className="font-serif text-lg">{roleGivingPanel.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {roleGivingPanel.items.map((item) => (
+                  <div key={item.label} className="rounded-lg glass-inset p-3">
+                    <p className="text-xs text-[#999999]">{item.label}</p>
+                    <p className="text-lg font-semibold text-[#1a1a1a]">{item.value}</p>
+                    <p className="text-xs text-[#666666]">{item.description}</p>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="w-full" asChild>
+                  <Link href={roleGivingPanel.action.href}>{roleGivingPanel.action.label}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
           {/* Recurring Gifts */}
           <Card>
             <CardHeader className="pb-3">

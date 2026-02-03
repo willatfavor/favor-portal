@@ -47,7 +47,17 @@ export default function AdminUsersPage() {
 
   function handleSave() {
     if (!editing) return;
-    const updated = updateMockUser(editing.id, editing);
+    const base = users.find((u) => u.id === editing.id);
+    if (!base) return;
+    const updated = updateMockUser(editing.id, {
+      firstName: editing.firstName,
+      lastName: editing.lastName,
+      email: editing.email,
+      constituentType: editing.constituentType,
+      isAdmin: editing.isAdmin,
+      lifetimeGivingTotal: base.lifetimeGivingTotal,
+      rddAssignment: base.rddAssignment,
+    });
     if (updated) {
       const next = users.map((u) => (u.id === updated.id ? updated : u));
       setUsers(next);
@@ -186,22 +196,16 @@ export default function AdminUsersPage() {
                               </Select>
                             </div>
                             <div className="space-y-1.5">
-                              <Label>Lifetime Giving</Label>
-                              <Input
-                                type="number"
-                                value={editing.lifetimeGivingTotal}
-                                onChange={(e) =>
-                                  setEditing({ ...editing, lifetimeGivingTotal: Number(e.target.value) })
-                                }
-                              />
+                              <Label>Lifetime Giving (Synced)</Label>
+                              <Input type="number" value={editing.lifetimeGivingTotal} disabled />
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <Label>RDD Assignment</Label>
-                            <Input
-                              value={editing.rddAssignment ?? ""}
-                              onChange={(e) => setEditing({ ...editing, rddAssignment: e.target.value })}
-                            />
+                            <Label>RDD Assignment (Synced)</Label>
+                            <Input value={editing.rddAssignment ?? ""} disabled />
+                            <p className="text-xs text-[#999999]">
+                              These fields are read-only and will sync from Blackbaud.
+                            </p>
                           </div>
                           <div className="flex items-center justify-between rounded-xl glass-inset p-3">
                             <div>

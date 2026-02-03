@@ -167,7 +167,7 @@
 
   /* ─── Motion Utilities ─── */
 
-  /* Base transition — explicit properties for performance */
+  /* Base transition - explicit properties for performance */
   .glass-transition {
     transition:
       transform var(--duration-normal) var(--ease-glass),
@@ -203,6 +203,9 @@
   .glass-enter-delay-2 { animation-delay: 160ms; }
   .glass-enter-delay-3 { animation-delay: 240ms; }
   .glass-enter-delay-4 { animation-delay: 320ms; }
+  .glass-enter-delay-5 { animation-delay: 400ms; }
+  .glass-enter-delay-6 { animation-delay: 480ms; }
+  .glass-enter-delay-7 { animation-delay: 560ms; }
 }
 
 /* ─── Keyframes ─── */

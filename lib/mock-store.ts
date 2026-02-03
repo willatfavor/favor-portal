@@ -5,11 +5,13 @@ import type {
   Course,
   CourseModule,
   UserCourseProgress,
+  CourseNote,
   FoundationGrant,
   CommunicationPreferences,
   ContentItem,
   PortalEvent,
   CommunicationTemplate,
+  ActivityEvent,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -18,11 +20,13 @@ import {
   MOCK_COURSES,
   MOCK_COURSE_MODULES,
   MOCK_PROGRESS,
+  MOCK_NOTES,
   MOCK_GRANTS,
   MOCK_PREFERENCES,
   MOCK_CONTENT,
   MOCK_EVENTS,
   MOCK_TEMPLATES,
+  MOCK_ACTIVITY,
 } from './mock-data';
 
 const STORAGE_KEYS = {
@@ -32,11 +36,13 @@ const STORAGE_KEYS = {
   courses: 'favor_mock_courses',
   modules: 'favor_mock_course_modules',
   progress: 'favor_mock_course_progress',
+  notes: 'favor_mock_course_notes',
   grants: 'favor_mock_grants',
   preferences: 'favor_mock_preferences',
   content: 'favor_mock_content',
   events: 'favor_mock_events',
   templates: 'favor_mock_templates',
+  activity: 'favor_mock_activity',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -80,11 +86,13 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.courses, MOCK_COURSES);
   seed(STORAGE_KEYS.modules, MOCK_COURSE_MODULES);
   seed(STORAGE_KEYS.progress, MOCK_PROGRESS);
+  seed(STORAGE_KEYS.notes, MOCK_NOTES);
   seed(STORAGE_KEYS.grants, MOCK_GRANTS);
   seed(STORAGE_KEYS.preferences, MOCK_PREFERENCES);
   seed(STORAGE_KEYS.content, MOCK_CONTENT);
   seed(STORAGE_KEYS.events, MOCK_EVENTS);
   seed(STORAGE_KEYS.templates, MOCK_TEMPLATES);
+  seed(STORAGE_KEYS.activity, MOCK_ACTIVITY);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -132,6 +140,9 @@ export function getMockGifts(): Gift[] {
 
 export function setMockGifts(gifts: Gift[]): void {
   setItem(STORAGE_KEYS.gifts, gifts);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('favor:gifts'));
+  }
 }
 
 export function getMockGiftsForUser(userId: string | undefined): Gift[] {
@@ -209,6 +220,41 @@ export function upsertMockProgress(entry: UserCourseProgress): void {
   setMockProgress(progress);
 }
 
+export function getMockNotes(): CourseNote[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.notes, MOCK_NOTES);
+}
+
+export function setMockNotes(notes: CourseNote[]): void {
+  setItem(STORAGE_KEYS.notes, notes);
+}
+
+export function getMockNotesForUser(userId: string | undefined): CourseNote[] {
+  if (!userId) return [];
+  return getMockNotes().filter((note) => note.userId === userId);
+}
+
+export function getMockNoteForModule(
+  userId: string | undefined,
+  moduleId: string | undefined
+): CourseNote | null {
+  if (!userId || !moduleId) return null;
+  return getMockNotes().find((note) => note.userId === userId && note.moduleId === moduleId) ?? null;
+}
+
+export function upsertMockNote(note: CourseNote): void {
+  const notes = getMockNotes();
+  const index = notes.findIndex(
+    (entry) => entry.userId === note.userId && entry.moduleId === note.moduleId
+  );
+  if (index >= 0) {
+    notes[index] = { ...notes[index], ...note };
+  } else {
+    notes.unshift(note);
+  }
+  setMockNotes(notes);
+}
+
 export function getMockGrants(): FoundationGrant[] {
   initMockStore();
   return getItem(STORAGE_KEYS.grants, MOCK_GRANTS);
@@ -271,4 +317,21 @@ export function getMockTemplates(): CommunicationTemplate[] {
 
 export function setMockTemplates(templates: CommunicationTemplate[]): void {
   setItem(STORAGE_KEYS.templates, templates);
+}
+
+export function getMockActivity(): ActivityEvent[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.activity, MOCK_ACTIVITY);
+}
+
+export function setMockActivity(events: ActivityEvent[]): void {
+  setItem(STORAGE_KEYS.activity, events);
+}
+
+export function recordActivity(event: ActivityEvent): void {
+  const events = getMockActivity();
+  setMockActivity([event, ...events]);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('favor:activity'));
+  }
 }

@@ -36,10 +36,22 @@ export function DevTools() {
   const { user, isDev, setDevUser, updateDevUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
     if (!isDev) return;
     setUsers(getMockUsers());
+  }, [isDev]);
+
+  useEffect(() => {
+    if (!isDev) return;
+    const params = new URLSearchParams(window.location.search);
+    const shouldEnable =
+      params.has("devtools") || localStorage.getItem("favor_devtools") === "true";
+    if (params.has("devtools")) {
+      localStorage.setItem("favor_devtools", "true");
+    }
+    setEnabled(shouldEnable);
   }, [isDev]);
 
   const activeUser = user;
@@ -51,7 +63,7 @@ export function DevTools() {
     return "Partner";
   }, [activeUser]);
 
-  if (!isDev) return null;
+  if (!isDev || !enabled) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -118,7 +130,7 @@ export function DevTools() {
               <SelectContent>
                 {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
-                    {u.firstName} {u.lastName} — {u.constituentType.replace("_", " ")}
+                    {u.firstName} {u.lastName} - {u.constituentType.replace("_", " ")}
                   </SelectItem>
                 ))}
               </SelectContent>

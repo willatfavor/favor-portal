@@ -7,10 +7,14 @@ import {
   GraduationCap,
   TrendingUp,
   User,
-  Settings,
   FileText,
-  Sparkles,
   MessageCircle,
+  Building2,
+  Church,
+  Wallet,
+  Megaphone,
+  HandHeart,
+  Star,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,10 +24,14 @@ const ICON_MAP: Record<string, LucideIcon> = {
   GraduationCap,
   TrendingUp,
   User,
-  Settings,
   FileText,
-  Sparkles,
   MessageCircle,
+  Building2,
+  Church,
+  Wallet,
+  Megaphone,
+  HandHeart,
+  Star,
 };
 
 interface ModuleTileProps {
@@ -32,9 +40,17 @@ interface ModuleTileProps {
   icon: string;
   href: string;
   badge?: string;
+  accent?: "sage" | "gold" | "stone" | "clay";
   onClick?: () => void;
   className?: string;
 }
+
+const ACCENT_STYLES: Record<NonNullable<ModuleTileProps["accent"]>, { icon: string; ring: string }> = {
+  sage: { icon: "bg-[#2b4d24]/10 text-[#2b4d24]", ring: "border-[#2b4d24]/20" },
+  gold: { icon: "bg-[#e1a730]/15 text-[#a36d4c]", ring: "border-[#e1a730]/30" },
+  stone: { icon: "bg-[#8b957b]/15 text-[#2b4d24]", ring: "border-[#c5ccc2]/40" },
+  clay: { icon: "bg-[#ba9a86]/15 text-[#8f6b57]", ring: "border-[#ba9a86]/30" },
+};
 
 export function ModuleTile({
   title,
@@ -42,10 +58,12 @@ export function ModuleTile({
   icon,
   href,
   badge,
+  accent = "sage",
   onClick,
   className,
 }: ModuleTileProps) {
   const Icon = ICON_MAP[icon] ?? Heart;
+  const accentStyle = ACCENT_STYLES[accent];
 
   const inner = (
     <div
@@ -55,8 +73,8 @@ export function ModuleTile({
       )}
     >
       <div className="flex items-start justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl glass-inset">
-          <Icon className="h-5 w-5 text-[#2b4d24]" />
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl glass-inset border", accentStyle.ring)}>
+          <Icon className={cn("h-5 w-5", accentStyle.icon)} />
         </div>
         {badge && (
           <Badge variant="secondary" className="text-xs">

@@ -9,7 +9,6 @@ import {
   getMockGiftsForUser,
   getMockRecurringGiftsForUser,
 } from '@/lib/mock-store';
-import { getLocalGifts } from '@/lib/local-storage';
 
 interface UseGivingReturn {
   gifts: Gift[];
@@ -43,9 +42,8 @@ export function useGiving(userId: string | undefined, refreshKey?: number): UseG
         setIsLoading(true);
 
         if (isDevBypass) {
-          const localGifts = getLocalGifts().filter((g) => g.userId === activeUserId);
           const mockGifts = getMockGiftsForUser(activeUserId);
-          const combined = [...localGifts, ...mockGifts].sort(
+          const combined = [...mockGifts].sort(
             (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
           );
           const recurring = getMockRecurringGiftsForUser(activeUserId);

@@ -27,11 +27,16 @@ export default function CoursesPage() {
     );
   }
 
-  const accessibleCourses = courses.filter((course) =>
-    canAccessCourse(course.accessLevel, user?.constituentType ?? "individual")
+  const publishedCourses = courses.filter((course) => course.status !== "draft");
+  const accessibleCourses = publishedCourses.filter(
+    (course) =>
+      canAccessCourse(course.accessLevel, user?.constituentType ?? "individual") &&
+      !course.isLocked
   );
-  const lockedCourses = courses.filter(
-    (course) => !canAccessCourse(course.accessLevel, user?.constituentType ?? "individual")
+  const lockedCourses = publishedCourses.filter(
+    (course) =>
+      !canAccessCourse(course.accessLevel, user?.constituentType ?? "individual") ||
+      course.isLocked
   );
 
   const filteredCourses = accessibleCourses.filter(
@@ -160,7 +165,9 @@ export default function CoursesPage() {
                     <Badge variant="outline" className="text-[10px] text-[#8b957b]">
                       {course.accessLevel.replace("_", " ")}
                     </Badge>
-                    <span className="text-xs text-[#999999]">Locked</span>
+                    <span className="text-xs text-[#999999]">
+                      {course.isPaid ? `Paid - $${course.price ?? 0}` : "Locked"}
+                    </span>
                   </div>
                   <h3 className="font-serif text-lg text-[#1a1a1a]">{course.title}</h3>
                   <p className="text-sm text-[#999999] line-clamp-2">{course.description}</p>

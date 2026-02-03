@@ -80,7 +80,7 @@ export default function SettingsPage() {
   function downloadReport() {
     const label = reportPeriod === "quarterly" ? "Q4 2025" : "Annual 2025";
     const text = [
-      `FAVOR INTERNATIONAL — ${label} IMPACT REPORT`,
+      `FAVOR INTERNATIONAL - ${label} IMPACT REPORT`,
       "=".repeat(50),
       "",
       "Summary",

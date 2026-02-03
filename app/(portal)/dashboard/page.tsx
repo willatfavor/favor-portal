@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
 import { useCourses } from "@/hooks/use-courses";
+import { useContent } from "@/hooks/use-content";
+import { useGrants } from "@/hooks/use-grants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,25 +26,464 @@ import { EmptyState } from "@/components/portal/empty-state";
 import { GiveNowDialog } from "@/components/portal/give-now-dialog";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
 import { NEWS_FEED, MODULE_TILES } from "@/lib/portal-mock-data";
-import { getGivingTier } from "@/lib/constants";
+import { canAccessCourse, canAccessContent, getGivingTier } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import type { ConstituentType } from "@/types";
 
 export default function DashboardPage() {
   const { user, isLoading: isUserLoading } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const { totalGiven, ytdGiven, gifts, isLoading: isGivingLoading } = useGiving(user?.id, refreshKey);
-  const { courses, progress, isLoading: isCoursesLoading } = useCourses(user?.id);
+  const { courses, modules, progress, isLoading: isCoursesLoading } = useCourses(user?.id);
+  const { items: contentItems, isLoading: isContentLoading } = useContent();
+  const { grants, isLoading: isGrantsLoading } = useGrants(user?.id);
 
-  const isLoading = isUserLoading || isGivingLoading || isCoursesLoading;
+  const isLoading = isUserLoading || isGivingLoading || isCoursesLoading || isContentLoading || isGrantsLoading;
 
-  // Course progress
-  const inProgressCourses = courses.slice(0, 3);
-  const totalModules = courses.length * 5;
-  const completedModules = progress.filter((p) => p.completed).length;
+  const userType = (user?.constituentType ?? "individual") as ConstituentType;
+
+  const accessibleCourses = courses.filter((course) =>
+    canAccessCourse(course.accessLevel, userType)
+  );
+  const accessibleCourseIds = new Set(accessibleCourses.map((course) => course.id));
+  const accessibleModules = modules.filter((module) => accessibleCourseIds.has(module.courseId));
+  const completedModules = progress.filter(
+    (p) => p.completed && accessibleModules.some((m) => m.id === p.moduleId)
+  ).length;
+  const totalModules = accessibleModules.length;
   const progressPercentage =
     totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
   const tier = getGivingTier((user?.lifetimeGivingTotal ?? 0) + totalGiven);
+
+  const accessibleContent = contentItems.filter((item) =>
+    canAccessContent(item.accessLevel, userType)
+  );
+  const baseRecommended = accessibleContent.slice(0, 3);
+
+  const roleExperience = (() => {
+    switch (userType) {
+      case "foundation": {
+        const active = grants.filter((g) => g.status === "active");
+        const nextReport = active.find((g) => g.nextReportDue)?.nextReportDue;
+        return {
+          anchorId: "foundation",
+          highlights: {
+            title: "Grant Portfolio",
+            subtitle: "Reporting cadence and active funding milestones",
+            items: [
+              {
+                title: "Active Grants",
+                value: `${active.length}`,
+                description: "Currently funded initiatives",
+              },
+              {
+                title: "Next Report Due",
+                value: nextReport ? new Date(nextReport).toLocaleDateString() : "None scheduled",
+                description: "Upcoming reporting deadline",
+              },
+              {
+                title: "Board Materials",
+                value: "Prepared",
+                description: "Latest briefing packet is ready",
+                actionLabel: "View reports",
+                actionHref: "/content?type=report",
+              },
+            ],
+          },
+          actionsTitle: "Foundation Actions",
+          actionsSubtitle: "Keep grant reporting and stewardship aligned",
+          actions: [
+            {
+              title: "Grant Reporting Timeline",
+              description: "Track milestones and report submissions",
+              actionLabel: "Open timeline",
+              actionHref: "/giving?view=grants",
+            },
+            {
+              title: "Impact Metrics Snapshot",
+              description: "Board-ready metrics updated weekly",
+              actionLabel: "Download metrics",
+              actionHref: "/content?tag=foundation",
+            },
+            {
+              title: "Site Visit Requests",
+              description: "Coordinate visits and field updates",
+              actionLabel: "Request visit",
+              actionHref: "/content?tag=site-visit",
+            },
+          ],
+          recommendedTags: ["grant", "report", "foundation", "board"],
+          contentTitle: "Board-ready resources",
+          contentSubtitle: "Briefings and reports curated for your team",
+        };
+      }
+      case "church":
+        return {
+          anchorId: "church",
+          highlights: {
+            title: "Congregation Briefing",
+            subtitle: "Resources and engagement tools for your church",
+            items: [
+              {
+                title: "Mission Sunday Kit",
+                value: "Updated",
+                description: "Slides, videos, and bulletin inserts",
+                actionLabel: "Open resources",
+                actionHref: "/content?tag=church",
+              },
+              {
+                title: "Upcoming Events",
+                value: "2",
+                description: "Partner gatherings in the next 60 days",
+              },
+              {
+                title: "Material Requests",
+                value: "Ready",
+                description: "Order brochures and prayer guides",
+              },
+            ],
+          },
+          actionsTitle: "Church Actions",
+          actionsSubtitle: "Keep your congregation connected",
+          actions: [
+            {
+              title: "Plan Mission Sunday",
+              description: "Invite Favor for a Sunday feature",
+              actionLabel: "View toolkit",
+              actionHref: "/content?tag=mission-sunday",
+            },
+            {
+              title: "Congregation Engagement",
+              description: "Prayer prompts and small-group guides",
+              actionLabel: "Download guides",
+              actionHref: "/content?tag=church",
+            },
+            {
+              title: "Bulk Materials",
+              description: "Order brochures and prayer guides",
+              actionLabel: "Request materials",
+              actionHref: "/content?tag=materials",
+            },
+          ],
+          recommendedTags: ["church", "pastor", "resource", "event"],
+          contentTitle: "Church resources",
+          contentSubtitle: "Materials designed for congregational use",
+        };
+      case "daf": {
+        const dafTotal = gifts
+          .filter((g) => g.designation.toLowerCase().includes("daf"))
+          .reduce((sum, g) => sum + g.amount, 0);
+        return {
+          anchorId: "daf",
+          highlights: {
+            title: "Grant Recommendation Snapshot",
+            subtitle: "Stewardship details and recommended next steps",
+            items: [
+              {
+                title: "DAF Giving YTD",
+                value: formatCurrency(dafTotal),
+                description: "Based on portal activity",
+              },
+              {
+                title: "Grant Checklist",
+                value: "Available",
+                description: "Steps to submit your next recommendation",
+                actionLabel: "Open checklist",
+                actionHref: "/giving?view=daf",
+              },
+              {
+                title: "RDD Contact",
+                value: user?.rddAssignment ?? "Partner Care",
+                description: "Your DAF support contact",
+              },
+            ],
+          },
+          actionsTitle: "DAF Actions",
+          actionsSubtitle: "Simplify your recommendation workflow",
+          actions: [
+            {
+              title: "Start a Recommendation",
+              description: "Prepare your next DAF grant",
+              actionLabel: "Open checklist",
+              actionHref: "/giving?view=daf",
+            },
+            {
+              title: "DAF Documentation",
+              description: "Download letters and EIN details",
+              actionLabel: "View docs",
+              actionHref: "/content?tag=daf",
+            },
+            {
+              title: "Stewardship Summary",
+              description: "Year-to-date impact summary",
+              actionLabel: "View summary",
+              actionHref: "/content?type=report",
+            },
+          ],
+          recommendedTags: ["daf", "report", "grant"],
+          contentTitle: "DAF-ready documentation",
+          contentSubtitle: "Letters and summaries for your provider",
+        };
+      }
+      case "ambassador":
+        return {
+          anchorId: "ambassador",
+          highlights: {
+            title: "Advocacy Briefing",
+            subtitle: "Momentum, outreach, and next actions",
+            items: [
+              {
+                title: "Campaign Momentum",
+                value: "Rising",
+                description: "Engagement up 12% this month",
+              },
+              {
+                title: "Shareable Assets",
+                value: "6 new",
+                description: "Updated ambassador toolkit",
+                actionLabel: "View assets",
+                actionHref: "/content?tag=ambassador",
+              },
+              {
+                title: "Next Event",
+                value: "April 9",
+                description: "Ambassador Training Day",
+              },
+            ],
+          },
+          actionsTitle: "Ambassador Actions",
+          actionsSubtitle: "Tools to help you advocate",
+          actions: [
+            {
+              title: "Shareable Assets",
+              description: "Download the latest toolkit",
+              actionLabel: "Open toolkit",
+              actionHref: "/content?tag=ambassador",
+            },
+            {
+              title: "Upcoming Training",
+              description: "Register for the next cohort",
+              actionLabel: "View schedule",
+              actionHref: "/content?tag=training",
+            },
+            {
+              title: "Campaign Goals",
+              description: "Track your outreach milestones",
+              actionLabel: "View goals",
+              actionHref: "/dashboard#ambassador",
+            },
+          ],
+          recommendedTags: ["ambassador", "campaign", "training"],
+          contentTitle: "Advocacy resources",
+          contentSubtitle: "Scripts, assets, and campaign updates",
+        };
+      case "volunteer":
+        return {
+          anchorId: "volunteer",
+          highlights: {
+            title: "Volunteer Briefing",
+            subtitle: "Assignments, training, and support",
+            items: [
+              {
+                title: "Active Tasks",
+                value: "3",
+                description: "Assignments currently in progress",
+              },
+              {
+                title: "Next Training",
+                value: "Feb 20",
+                description: "Volunteer welcome session",
+              },
+              {
+                title: "Resources",
+                value: "Updated",
+                description: "Orientation pack and checklists",
+                actionLabel: "Open resources",
+                actionHref: "/content?tag=volunteer",
+              },
+            ],
+          },
+          actionsTitle: "Volunteer Actions",
+          actionsSubtitle: "Stay on track with assignments",
+          actions: [
+            {
+              title: "Assignments",
+              description: "Review current tasks and updates",
+              actionLabel: "View tasks",
+              actionHref: "/dashboard#volunteer",
+            },
+            {
+              title: "Training Schedule",
+              description: "Prepare for upcoming sessions",
+              actionLabel: "View training",
+              actionHref: "/content?tag=training",
+            },
+            {
+              title: "Volunteer Toolkit",
+              description: "Orientation pack and checklists",
+              actionLabel: "Open toolkit",
+              actionHref: "/content?tag=volunteer",
+            },
+          ],
+          recommendedTags: ["volunteer", "training", "resource"],
+          contentTitle: "Volunteer resources",
+          contentSubtitle: "Guides and materials for your role",
+        };
+      case "major_donor":
+        return {
+          anchorId: "stewardship",
+          highlights: {
+            title: "Stewardship Briefing",
+            subtitle: "Strategic updates and priority initiatives",
+            items: [
+              {
+                title: "Strategic Initiatives",
+                value: "3 active",
+                description: "Priority expansion projects",
+              },
+              {
+                title: "Financial Summary",
+                value: "Ready",
+                description: "Board-ready financial packet",
+                actionLabel: "View reports",
+                actionHref: "/content?type=report",
+              },
+              {
+                title: "RDD Contact",
+                value: user?.rddAssignment ?? "Partner Care",
+                description: "Schedule your next update",
+              },
+            ],
+          },
+          actionsTitle: "Stewardship Actions",
+          actionsSubtitle: "Plan your next strategic touchpoint",
+          actions: [
+            {
+              title: "Executive Briefing",
+              description: "Latest stewardship packet",
+              actionLabel: "View packet",
+              actionHref: "/content?tag=stewardship",
+            },
+            {
+              title: "Schedule RDD Update",
+              description: "Request a strategic call",
+              actionLabel: "Request update",
+              actionHref: "/profile",
+            },
+            {
+              title: "Impact Milestones",
+              description: "See progress on priority initiatives",
+              actionLabel: "View milestones",
+              actionHref: "/content?tag=impact",
+            },
+          ],
+          recommendedTags: ["stewardship", "report", "impact", "financial"],
+          contentTitle: "Strategic insights",
+          contentSubtitle: "Stewardship updates curated for you",
+        };
+      default:
+        return {
+          anchorId: "partner",
+          highlights: {
+            title: "Partner Briefing",
+            subtitle: "Your partnership highlights and next steps",
+            items: [
+              {
+                title: "Giving Tier",
+                value: tier.name,
+                description: "Current partnership tier",
+              },
+              {
+                title: "Recommended Course",
+                value: accessibleCourses[0]?.title ?? "Browse courses",
+                description: "Continue your learning journey",
+                actionLabel: "View courses",
+                actionHref: "/courses",
+              },
+              {
+                title: "Impact Report",
+                value: "Q4 2025",
+                description: "Latest report ready to download",
+                actionLabel: "View report",
+                actionHref: "/content?type=report",
+              },
+            ],
+          },
+          actionsTitle: "Partner Actions",
+          actionsSubtitle: "Make the most of your partnership",
+          actions: [
+            {
+              title: "Give a Gift",
+              description: "Support a program that matters to you",
+              actionLabel: "Start a gift",
+              actionHref: "/giving",
+            },
+            {
+              title: "Explore Courses",
+              description: "Deepen your understanding of Favor's work",
+              actionLabel: "Browse courses",
+              actionHref: "/courses",
+            },
+            {
+              title: "Download Reports",
+              description: "Latest quarterly impact summary",
+              actionLabel: "Open reports",
+              actionHref: "/content?type=report",
+            },
+          ],
+          recommendedTags: ["impact", "report", "update", "partner"],
+          contentTitle: "Recommended for you",
+          contentSubtitle: "Updates curated for your partnership",
+        };
+    }
+  })();
+
+  const roleHighlights = roleExperience.highlights;
+  const roleActions = roleExperience.actions;
+  const roleRecommended = accessibleContent.filter((item) => {
+    return roleExperience.recommendedTags.some((tag) => {
+      return item.tags.includes(tag) || item.type === tag;
+    });
+  });
+  const curatedContent = (roleRecommended.length > 0 ? roleRecommended : baseRecommended).slice(0, 3);
+  const moduleTiles = MODULE_TILES.filter(
+    (tile) => tile.audiences === "all" || tile.audiences.includes(userType)
+  );
+
+  const getCourseProgress = (courseId: string) => {
+    const courseModules = accessibleModules.filter((m) => m.courseId === courseId);
+    const courseProgress = progress.filter((p) =>
+      courseModules.some((m) => m.id === p.moduleId)
+    );
+    return { courseModules, courseProgress };
+  };
+
+  const inProgressCourses = accessibleCourses
+    .map((course) => {
+      const { courseModules, courseProgress } = getCourseProgress(course.id);
+      const completedCount = courseProgress.filter((p) => p.completed).length;
+      return {
+        course,
+        completedCount,
+        totalCount: courseModules.length,
+      };
+    })
+    .filter((entry) => entry.completedCount > 0)
+    .sort((a, b) => b.completedCount - a.completedCount)
+    .slice(0, 3);
+  const courseCards =
+    inProgressCourses.length > 0
+      ? inProgressCourses
+      : accessibleCourses.slice(0, 3).map((course) => {
+          const { courseModules, courseProgress } = getCourseProgress(course.id);
+          const completedCount = courseProgress.filter((p) => p.completed).length;
+          return {
+            course,
+            completedCount,
+            totalCount: courseModules.length,
+          };
+        });
 
   if (isLoading) {
     return (
@@ -54,7 +495,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12">
-      {/* ─── HERO WELCOME BAND ─── */}
+      {/* HERO WELCOME BAND */}
       <section className="glass-enter relative overflow-hidden rounded-3xl bg-[#2b4d24]/90 backdrop-blur-xl border border-white/10 px-6 py-10 sm:px-10 sm:py-12">
         {/* Decorative circles */}
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/5" />
@@ -131,19 +572,97 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ─── LATEST FROM FAVOR (Carousel) ─── */}
+      {/* LATEST FROM FAVOR (Carousel) */}
       <section className="glass-enter glass-enter-delay-1">
+        <SectionHeader title={roleHighlights.title} subtitle={roleHighlights.subtitle} />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {roleHighlights.items.map((item) => (
+            <Card key={item.title} className="glass-pane">
+              <CardContent className="p-5 space-y-2">
+                <p className="text-xs text-[#999999]">{item.title}</p>
+                <p className="text-xl font-semibold text-[#1a1a1a]">{item.value}</p>
+                <p className="text-sm text-[#666666]">{item.description}</p>
+                {item.actionLabel && item.actionHref && (
+                  <Button variant="ghost" size="sm" className="text-[#2b4d24]" asChild>
+                    <Link href={item.actionHref}>
+                      {item.actionLabel} <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section
+        id={roleExperience.anchorId}
+        className="glass-enter glass-enter-delay-2 scroll-mt-24"
+      >
+        <SectionHeader
+          title={roleExperience.actionsTitle}
+          subtitle={roleExperience.actionsSubtitle}
+        />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {roleActions.map((item) => (
+            <Card key={item.title} className="glass-pane">
+              <CardContent className="p-5 space-y-3">
+                <div>
+                  <p className="text-xs text-[#999999]">{item.title}</p>
+                  <p className="mt-2 text-sm text-[#666666]">{item.description}</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-[#2b4d24]" asChild>
+                  <Link href={item.actionHref}>
+                    {item.actionLabel} <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {curatedContent.length > 0 && (
+        <section className="glass-enter glass-enter-delay-3">
+          <SectionHeader
+            title={roleExperience.contentTitle}
+            subtitle={roleExperience.contentSubtitle}
+          />
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {curatedContent.map((item) => (
+              <Link key={item.id} href={`/content/${item.id}`} className="block">
+                <Card className="glass-pane glass-transition glass-hover">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-[10px] text-[#8b957b]">
+                        {item.type}
+                      </Badge>
+                      <span className="text-xs text-[#999999]">
+                        {new Date(item.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="font-serif text-lg text-[#1a1a1a]">{item.title}</h3>
+                    <p className="text-sm text-[#666666] line-clamp-2">{item.excerpt}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="glass-enter glass-enter-delay-4">
         <SectionHeader title="Latest from Favor" subtitle="News, stories, and resources" />
         <div className="mt-5">
           <NewsCarousel items={NEWS_FEED} />
         </div>
       </section>
 
-      {/* ─── MODULES GRID ─── */}
-      <section className="glass-enter glass-enter-delay-2">
+      {/* MODULES GRID */}
+      <section className="glass-enter glass-enter-delay-5">
         <SectionHeader title="Your Portal" subtitle="Explore your partnership tools and resources" />
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULE_TILES.map((tile) =>
+          {moduleTiles.map((tile) =>
             tile.id === "support" ? (
               <ContactSupportDialog
                 key={tile.id}
@@ -153,6 +672,7 @@ export default function DashboardPage() {
                     description={tile.description}
                     icon={tile.icon}
                     href="#"
+                    accent={tile.accent}
                     onClick={() => {}}
                   />
                 }
@@ -164,6 +684,7 @@ export default function DashboardPage() {
                 description={tile.description}
                 icon={tile.icon}
                 href={tile.href}
+                accent={tile.accent}
                 badge={
                   tile.id === "courses" && progressPercentage > 0
                     ? `${progressPercentage}%`
@@ -177,23 +698,19 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ─── CONTINUE WHERE YOU LEFT OFF ─── */}
-      <section className="glass-enter glass-enter-delay-3">
+      {/* CONTINUE WHERE YOU LEFT OFF */}
+      <section className="glass-enter glass-enter-delay-6">
         <SectionHeader
           title="Continue Where You Left Off"
           subtitle="Pick up your learning progress"
           href="/courses"
         />
         <div className="mt-5">
-          {inProgressCourses.length > 0 ? (
+          {courseCards.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {inProgressCourses.map((course) => {
-                const cp = progress.filter((p) =>
-                  p.moduleId.startsWith(course.id)
-                );
-                const done = cp.filter((p) => p.completed).length;
-                const total = cp.length || 5;
-                const pct = Math.round((done / total) * 100);
+              {courseCards.map(({ course, completedCount, totalCount }) => {
+                const total = totalCount || 1;
+                const pct = Math.round((completedCount / total) * 100);
 
                 return (
                   <Link
@@ -227,7 +744,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="mt-2 flex items-center justify-between text-xs text-[#999999]">
                           <span>
-                            {done}/{total} modules
+                            {completedCount}/{total} modules
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />~{total * 15} min
@@ -251,8 +768,8 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ─── RECENT ACTIVITY ─── */}
-      <section className="glass-enter glass-enter-delay-4">
+      {/* RECENT ACTIVITY */}
+      <section className="glass-enter glass-enter-delay-7">
         <SectionHeader title="Recent Activity" subtitle="Your latest gifts and updates" />
         <div className="mt-5 space-y-3">
           {gifts.length > 0 ? (
@@ -267,7 +784,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-[#1a1a1a]">
-                      ${gift.amount.toLocaleString()} — {gift.designation}
+                      ${gift.amount.toLocaleString()} - {gift.designation}
                     </p>
                     <p className="text-xs text-[#999999]">
                       {new Date(gift.date).toLocaleDateString("en-US", {

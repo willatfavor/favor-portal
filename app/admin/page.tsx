@@ -1,42 +1,171 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getMockUsers,
   getMockCourses,
   getMockContent,
   getMockGifts,
+  getMockActivity,
 } from "@/lib/mock-store";
 import { getSupportTickets } from "@/lib/local-storage";
 import { formatCurrency } from "@/lib/utils";
-import { TrendingUp, Users, BookOpen, FileText, LifeBuoy } from "lucide-react";
+import { ActivityEvent, Gift, SupportTicket, User } from "@/types";
+import {
+  TrendingUp,
+  Users,
+  BookOpen,
+  FileText,
+  LifeBuoy,
+  Filter,
+  ClipboardCheck,
+  Sparkles,
+} from "lucide-react";
+
+const USER_TYPES = [
+  "all",
+  "individual",
+  "major_donor",
+  "church",
+  "foundation",
+  "daf",
+  "ambassador",
+  "volunteer",
+];
+
+function getMonthKey(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 7);
+}
+
+function describeActivity(event: ActivityEvent, user?: User | null) {
+  const name = user ? `${user.firstName} ${user.lastName}` : "A partner";
+  switch (event.type) {
+    case "gift_created":
+      return `${name} created a dashboard gift`;
+    case "course_completed":
+      return `${name} completed a course module`;
+    case "course_progress":
+      return `${name} progressed in a course`;
+    case "content_viewed":
+      return `${name} viewed a content item`;
+    case "support_ticket":
+      return `${name} submitted a support request`;
+    case "profile_updated":
+      return `${name} updated profile details`;
+    case "login":
+      return `${name} signed in`;
+    default:
+      return `${name} activity recorded`;
+  }
+}
 
 export default function AdminOverviewPage() {
-  const [stats, setStats] = useState({
-    users: 0,
-    courses: 0,
-    content: 0,
-    totalGiving: 0,
-    openTickets: 0,
-  });
+  const [users, setUsers] = useState<User[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [monthFilter, setMonthFilter] = useState("all");
+  const [userTypeFilter, setUserTypeFilter] = useState("all");
+  const [coursesCount, setCoursesCount] = useState(0);
+  const [contentCount, setContentCount] = useState(0);
 
   useEffect(() => {
-    const users = getMockUsers();
-    const courses = getMockCourses();
-    const content = getMockContent();
-    const gifts = getMockGifts();
-    const tickets = getSupportTickets();
-    setStats({
-      users: users.length,
-      courses: courses.length,
-      content: content.length,
-      totalGiving: gifts.reduce((sum, g) => sum + g.amount, 0),
-      openTickets: tickets.filter((t) => t.status !== "resolved").length,
-    });
+    setUsers(getMockUsers());
+    setActivity(getMockActivity());
+    setTickets(getSupportTickets());
+    setGifts(getMockGifts());
+    setCoursesCount(getMockCourses().length);
+    setContentCount(getMockContent().length);
   }, []);
+
+  useEffect(() => {
+    function handleActivity() {
+      setActivity(getMockActivity());
+    }
+    function handleGifts() {
+      setGifts(getMockGifts());
+    }
+    function handleSupport() {
+      setTickets(getSupportTickets());
+    }
+    window.addEventListener("favor:activity", handleActivity);
+    window.addEventListener("favor:gifts", handleGifts);
+    window.addEventListener("favor:support", handleSupport);
+    return () => {
+      window.removeEventListener("favor:activity", handleActivity);
+      window.removeEventListener("favor:gifts", handleGifts);
+      window.removeEventListener("favor:support", handleSupport);
+    };
+  }, []);
+
+  const monthOptions = useMemo(() => {
+    const dates = [
+      ...gifts.map((g) => g.date),
+      ...activity.map((a) => a.createdAt),
+      ...tickets.map((t) => t.createdAt),
+    ]
+      .map((date) => getMonthKey(date))
+      .filter(Boolean);
+    const unique = Array.from(new Set(dates));
+    unique.sort((a, b) => (a > b ? -1 : 1));
+    return ["all", ...unique];
+  }, [activity, tickets]);
+
+  const filteredUsers = useMemo(() => {
+    if (userTypeFilter === "all") return users;
+    return users.filter((u) => u.constituentType === userTypeFilter);
+  }, [users, userTypeFilter]);
+
+  const userIdSet = useMemo(
+    () => new Set(filteredUsers.map((u) => u.id)),
+    [filteredUsers]
+  );
+
+  const portalGifts = useMemo(() => {
+    const portalOnly = gifts.filter((g) => g.source === "portal");
+    return portalOnly.filter((g) => {
+      const matchesUser = userTypeFilter === "all" || userIdSet.has(g.userId);
+      const matchesMonth =
+        monthFilter === "all" || getMonthKey(g.date) === monthFilter;
+      return matchesUser && matchesMonth;
+    });
+  }, [gifts, monthFilter, userTypeFilter, userIdSet]);
+
+  const filteredActivity = useMemo(() => {
+    return activity.filter((event) => {
+      const matchesUser = userTypeFilter === "all" || userIdSet.has(event.userId);
+      const matchesMonth =
+        monthFilter === "all" || getMonthKey(event.createdAt) === monthFilter;
+      return matchesUser && matchesMonth;
+    });
+  }, [activity, monthFilter, userTypeFilter, userIdSet]);
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      const matchesMonth =
+        monthFilter === "all" || getMonthKey(ticket.createdAt) === monthFilter;
+      if (userTypeFilter === "all") return matchesMonth;
+      const matchedUser = users.find((u) => u.email === ticket.requesterEmail);
+      return matchesMonth && matchedUser?.constituentType === userTypeFilter;
+    });
+  }, [tickets, monthFilter, userTypeFilter, users]);
+
+  const portalGivingTotal = portalGifts.reduce((sum, g) => sum + g.amount, 0);
+  const completions = filteredActivity.filter((a) => a.type === "course_completed");
+  const contentViews = filteredActivity.filter((a) => a.type === "content_viewed");
 
   return (
     <div className="space-y-8">
@@ -44,7 +173,7 @@ export default function AdminOverviewPage() {
         <div>
           <h1 className="font-serif text-3xl text-[#1a1a1a]">Admin Overview</h1>
           <p className="text-sm text-[#666666]">
-            Monitor portal activity, content, and partner engagement in mock mode.
+            Monitor portal actions, engagement, and internal activity (mock mode).
           </p>
         </div>
         <Badge variant="outline" className="border-[#2b4d24] text-[#2b4d24]">
@@ -52,13 +181,46 @@ export default function AdminOverviewPage() {
         </Badge>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-xs text-[#8b957b]">
+          <Filter className="h-3.5 w-3.5" /> Filters
+        </div>
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {monthOptions.map((month) => (
+              <SelectItem key={month} value={month}>
+                {month === "all" ? "All months" : month}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="User type" />
+          </SelectTrigger>
+          <SelectContent>
+            {USER_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type === "all" ? "All user types" : type.replace("_", " ")}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-[#999999]">
+          Showing {filteredUsers.length} partners
+        </span>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-5">
         {[
-          { label: "Partners", value: stats.users, icon: Users },
-          { label: "Courses", value: stats.courses, icon: BookOpen },
-          { label: "Content Items", value: stats.content, icon: FileText },
-          { label: "Total Giving", value: formatCurrency(stats.totalGiving), icon: TrendingUp },
-          { label: "Open Tickets", value: stats.openTickets, icon: LifeBuoy },
+          { label: "Partners", value: filteredUsers.length, icon: Users },
+          { label: "Portal Giving", value: formatCurrency(portalGivingTotal), icon: TrendingUp },
+          { label: "Courses Completed", value: completions.length, icon: ClipboardCheck },
+          { label: "Content Views", value: contentViews.length, icon: Sparkles },
+          { label: "Open Tickets", value: filteredTickets.filter((t) => t.status !== "resolved").length, icon: LifeBuoy },
         ].map((stat) => (
           <Card key={stat.label} className="glass-pane">
             <CardHeader className="pb-2">
@@ -80,16 +242,25 @@ export default function AdminOverviewPage() {
             <CardTitle className="font-serif text-xl">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              "New ambassador onboarded in Denver",
-              "Q4 Impact Report published",
-              "Course module updated in Africa Programs",
-              "Two support tickets marked resolved",
-            ].map((item) => (
-              <div key={item} className="rounded-xl glass-inset p-3 text-sm text-[#666666]">
-                {item}
+            {filteredActivity.length === 0 ? (
+              <div className="rounded-xl glass-inset p-3 text-sm text-[#666666]">
+                No activity logged for the selected filters.
               </div>
-            ))}
+            ) : (
+              filteredActivity.slice(0, 6).map((event) => {
+                const user = users.find((u) => u.id === event.userId) ?? null;
+                return (
+                  <div key={event.id} className="rounded-xl glass-inset p-3 text-sm text-[#666666]">
+                    <div className="flex items-center justify-between">
+                      <span>{describeActivity(event, user)}</span>
+                      <span className="text-[10px] text-[#999999]">
+                        {new Date(event.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
 
@@ -98,15 +269,18 @@ export default function AdminOverviewPage() {
             <CardTitle className="font-serif text-xl">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">
-              Create a new course
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/courses">Create or edit courses</Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Publish a partner update
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/content">Publish partner updates</Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start">
-              Review support tickets
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/support">Review support tickets</Link>
             </Button>
+            <div className="text-xs text-[#999999]">
+              Courses: {coursesCount} - Content: {contentCount}
+            </div>
           </CardContent>
         </Card>
       </div>

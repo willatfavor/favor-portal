@@ -23,7 +23,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, CheckCircle, Clock } from "lucide-react";
 import { addSupportTicket, getSupportTickets } from "@/lib/local-storage";
-import type { SupportTicket } from "@/lib/portal-mock-data";
+import type { SupportTicket } from "@/types";
+import { useAuth } from "@/hooks/use-auth";
+import { recordActivity } from "@/lib/mock-store";
 import { toast } from "sonner";
 
 // Need to check if Select exists
@@ -32,6 +34,7 @@ interface ContactSupportDialogProps {
 }
 
 export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"form" | "history">("form");
   const [category, setCategory] = useState("");
@@ -55,7 +58,31 @@ export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
     setSubmitting(true);
     // Simulate brief delay
     setTimeout(() => {
-      const ticket = addSupportTicket({ category, subject, message });
+      const ticket = addSupportTicket({
+        category,
+        subject,
+        message,
+        requesterName: user ? `${user.firstName} ${user.lastName}` : undefined,
+        requesterEmail: user?.email,
+        messages: [
+          {
+            id: `msg-${Date.now()}`,
+            sender: "partner",
+            message,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      });
+      recordActivity({
+        id: `activity-${Date.now()}`,
+        type: "support_ticket",
+        userId: user?.id ?? "unknown",
+        createdAt: new Date().toISOString(),
+        metadata: { subject },
+      });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("favor:support"));
+      }
       setTickets((prev) => [ticket, ...prev]);
       setCategory("");
       setSubject("");
@@ -63,7 +90,7 @@ export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
       setSubmitting(false);
       setView("history");
       toast.success("Support request submitted", {
-        description: "We'll get back to you within 1–2 business days.",
+        description: "We'll get back to you within 1-2 business days.",
       });
     }, 600);
   }

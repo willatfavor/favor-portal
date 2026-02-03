@@ -5,11 +5,13 @@ import type {
   Course,
   CourseModule,
   UserCourseProgress,
+  CourseNote,
   FoundationGrant,
   CommunicationPreferences,
   ContentItem,
   PortalEvent,
   CommunicationTemplate,
+  ActivityEvent,
 } from '@/types';
 
 export const MOCK_USERS: User[] = [
@@ -113,6 +115,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Clean Water Initiative',
     isRecurring: true,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-002',
@@ -122,6 +125,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Where Most Needed',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-003',
@@ -131,6 +135,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Leadership Development',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-004',
@@ -140,6 +145,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Church Missions Fund',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-005',
@@ -149,6 +155,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Foundation Grant - Education',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-006',
@@ -158,6 +165,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'DAF Grant - Community Health',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
   {
     id: 'gift-007',
@@ -167,6 +175,7 @@ export const MOCK_GIFTS: Gift[] = [
     designation: 'Ambassador Campaign',
     isRecurring: false,
     receiptSent: true,
+    source: 'imported',
   },
 ];
 
@@ -203,6 +212,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 1,
     createdAt: '2025-10-01T12:00:00Z',
     moduleCount: 5,
+    status: 'published',
+    isLocked: false,
+    isPaid: false,
   },
   {
     id: 'course-vision',
@@ -213,6 +225,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 2,
     createdAt: '2025-11-05T12:00:00Z',
     moduleCount: 5,
+    status: 'published',
+    isLocked: false,
+    isPaid: false,
   },
   {
     id: 'course-us',
@@ -223,6 +238,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 3,
     createdAt: '2025-12-01T12:00:00Z',
     moduleCount: 5,
+    status: 'published',
+    isLocked: false,
+    isPaid: false,
   },
   {
     id: 'course-foundation',
@@ -233,6 +251,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 4,
     createdAt: '2026-01-03T12:00:00Z',
     moduleCount: 4,
+    status: 'published',
+    isLocked: true,
+    isPaid: false,
   },
   {
     id: 'course-ambassador',
@@ -243,6 +264,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 5,
     createdAt: '2026-01-10T12:00:00Z',
     moduleCount: 6,
+    status: 'published',
+    isLocked: true,
+    isPaid: false,
   },
   {
     id: 'course-major',
@@ -253,6 +277,9 @@ export const MOCK_COURSES: Course[] = [
     sortOrder: 6,
     createdAt: '2026-01-15T12:00:00Z',
     moduleCount: 3,
+    status: 'draft',
+    isLocked: true,
+    isPaid: false,
   },
 ];
 
@@ -328,6 +355,8 @@ export const MOCK_COURSE_MODULES: CourseModule[] = [
     cloudflareVideoId: 'demo-vision-3',
     sortOrder: 3,
     durationSeconds: 780,
+    type: 'reading',
+    resourceUrl: '/mock/discipleship-pathway.pdf',
   },
   {
     id: 'course-vision-module-4',
@@ -364,6 +393,7 @@ export const MOCK_COURSE_MODULES: CourseModule[] = [
     cloudflareVideoId: 'demo-us-2',
     sortOrder: 2,
     durationSeconds: 760,
+    type: 'video',
   },
   {
     id: 'course-us-module-3',
@@ -445,6 +475,8 @@ export const MOCK_COURSE_MODULES: CourseModule[] = [
     cloudflareVideoId: 'demo-amb-2',
     sortOrder: 2,
     durationSeconds: 820,
+    type: 'quiz',
+    resourceUrl: '/mock/ambassador-quiz.pdf',
   },
   {
     id: 'course-ambassador-module-3',
@@ -552,6 +584,16 @@ export const MOCK_PROGRESS: UserCourseProgress[] = [
   },
 ];
 
+export const MOCK_NOTES: CourseNote[] = [
+  {
+    id: 'note-001',
+    userId: 'user-001',
+    moduleId: 'course-africa-module-1',
+    content: 'Key takeaway: Favor pairs local leadership with long-term community support.',
+    updatedAt: '2026-01-12T09:15:00Z',
+  },
+];
+
 export const MOCK_GRANTS: FoundationGrant[] = [
   {
     id: 'grant-001',
@@ -614,7 +656,8 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'partner',
     date: '2026-01-18',
     author: 'Favor International',
-    tags: ['impact', 'report'],
+    tags: ['impact', 'report', 'partner'],
+    coverImage: 'https://images.unsplash.com/photo-1509099836639-18ba1795216d?q=80&w=1400&auto=format&fit=crop',
     fileUrl: '/mock/impact-report-q4-2025.pdf',
   },
   {
@@ -637,7 +680,8 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'foundation',
     date: '2026-01-05',
     author: 'Favor Leadership',
-    tags: ['foundation', 'briefing'],
+    tags: ['foundation', 'briefing', 'report', 'board'],
+    coverImage: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1400&auto=format&fit=crop',
     fileUrl: '/mock/foundation-briefing.pdf',
   },
   {
@@ -649,7 +693,7 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'ambassador',
     date: '2026-01-22',
     author: 'Ambassador Team',
-    tags: ['ambassador', 'resources'],
+    tags: ['ambassador', 'resources', 'campaign', 'training'],
     fileUrl: '/mock/ambassador-toolkit.zip',
   },
   {
@@ -661,7 +705,7 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'daf',
     date: '2025-12-20',
     author: 'Giving Team',
-    tags: ['daf', 'giving'],
+    tags: ['daf', 'giving', 'grant'],
   },
   {
     id: 'content-006',
@@ -672,7 +716,7 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'partner',
     date: '2026-01-28',
     author: 'Favor International',
-    tags: ['update'],
+    tags: ['update', 'impact'],
   },
   {
     id: 'content-007',
@@ -683,7 +727,7 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'major_donor',
     date: '2026-01-02',
     author: 'Finance Team',
-    tags: ['finance', 'donor'],
+    tags: ['finance', 'donor', 'stewardship', 'financial'],
     fileUrl: '/mock/major-donor-summary.pdf',
   },
   {
@@ -695,7 +739,20 @@ export const MOCK_CONTENT: ContentItem[] = [
     accessLevel: 'volunteer',
     date: '2026-01-14',
     author: 'Volunteer Operations',
-    tags: ['volunteer'],
+    tags: ['volunteer', 'training', 'resource'],
+  },
+  {
+    id: 'content-009',
+    title: 'Church Mission Sunday Kit',
+    excerpt: 'Slides, bulletin inserts, and a sermon guide for your next mission Sunday.',
+    body: 'Downloadable assets and guidance for engaging your congregation.',
+    type: 'resource',
+    accessLevel: 'church',
+    date: '2026-01-26',
+    author: 'Church Partner Team',
+    tags: ['church', 'mission-sunday', 'materials'],
+    coverImage: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=1400&auto=format&fit=crop',
+    fileUrl: '/mock/church-mission-sunday-kit.zip',
   },
 ];
 
@@ -768,5 +825,36 @@ export const MOCK_TEMPLATES: CommunicationTemplate[] = [
     content: 'Printed annual report mailing for partners who opted in.',
     status: 'active',
     updatedAt: '2025-12-15T12:00:00Z',
+  },
+];
+
+export const MOCK_ACTIVITY: ActivityEvent[] = [
+  {
+    id: 'activity-001',
+    type: 'gift_created',
+    userId: 'user-001',
+    createdAt: '2026-01-12T14:30:00Z',
+    metadata: { amount: 100, designation: 'Clean Water Initiative' },
+  },
+  {
+    id: 'activity-002',
+    type: 'course_completed',
+    userId: 'user-006',
+    createdAt: '2026-01-21T11:10:00Z',
+    metadata: { courseId: 'course-ambassador', module: 'Ambassador DNA' },
+  },
+  {
+    id: 'activity-003',
+    type: 'content_viewed',
+    userId: 'user-004',
+    createdAt: '2026-01-18T09:05:00Z',
+    metadata: { contentId: 'content-003' },
+  },
+  {
+    id: 'activity-004',
+    type: 'support_ticket',
+    userId: 'user-003',
+    createdAt: '2026-01-28T16:40:00Z',
+    metadata: { subject: 'Material order request' },
   },
 ];

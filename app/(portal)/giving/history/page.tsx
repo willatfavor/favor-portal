@@ -85,7 +85,7 @@ export default function GivingHistoryPage() {
 
   function downloadReceipt(gift: Gift) {
     const text = [
-      "FAVOR INTERNATIONAL — GIFT RECEIPT",
+      "FAVOR INTERNATIONAL - GIFT RECEIPT",
       "=".repeat(42),
       "",
       `Receipt #: ${gift.id}`,
@@ -95,7 +95,7 @@ export default function GivingHistoryPage() {
       `Designation: ${gift.designation}`,
       `Type: ${gift.isRecurring ? "Recurring" : "One-time"}`,
       "",
-      "Favor International, Inc. — EIN: XX-XXXXXXX",
+      "Favor International, Inc. - EIN: XX-XXXXXXX",
       "501(c)(3) Non-Profit Organization",
     ].join("\n");
     const blob = new Blob([text], { type: "text/plain" });

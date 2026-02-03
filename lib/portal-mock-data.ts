@@ -1,5 +1,7 @@
 // Mock data for the portal feed, notifications, and support system
 
+import type { ConstituentType } from "@/types";
+
 export interface NewsItem {
   id: string;
   title: string;
@@ -20,13 +22,15 @@ export interface Notification {
   link?: string;
 }
 
-export interface SupportTicket {
+export interface ModuleTileData {
   id: string;
-  category: string;
-  subject: string;
-  message: string;
-  status: 'open' | 'in_progress' | 'resolved';
-  createdAt: string;
+  title: string;
+  description: string;
+  icon: string;
+  href: string;
+  color: string;
+  audiences: ConstituentType[] | "all";
+  accent?: "sage" | "gold" | "stone" | "clay";
 }
 
 export const NEWS_FEED: NewsItem[] = [
@@ -41,7 +45,7 @@ export const NEWS_FEED: NewsItem[] = [
   {
     id: 'news-2',
     title: 'Spring Leadership Summit Registration Open',
-    excerpt: 'Join us March 15–17 in Nashville for our annual partner gathering. Early registration is now available.',
+    excerpt: 'Join us March 15-17 in Nashville for our annual partner gathering. Early registration is now available.',
     category: 'Event',
     date: '2026-01-25',
     readTime: '2 min',
@@ -127,7 +131,7 @@ export const INITIAL_NOTIFICATIONS: Notification[] = [
   },
 ];
 
-export const MODULE_TILES = [
+export const MODULE_TILES: ModuleTileData[] = [
   {
     id: 'giving',
     title: 'Giving',
@@ -135,6 +139,8 @@ export const MODULE_TILES = [
     icon: 'Heart',
     href: '/giving',
     color: '#2b4d24',
+    audiences: "all",
+    accent: "sage",
   },
   {
     id: 'courses',
@@ -143,6 +149,8 @@ export const MODULE_TILES = [
     icon: 'GraduationCap',
     href: '/courses',
     color: '#2b4d24',
+    audiences: "all",
+    accent: "stone",
   },
   {
     id: 'content',
@@ -151,14 +159,8 @@ export const MODULE_TILES = [
     icon: 'FileText',
     href: '/content',
     color: '#2b4d24',
-  },
-  {
-    id: 'insights',
-    title: 'Favor Insights',
-    description: 'Personalized recommendations and AI-guided next steps.',
-    icon: 'Sparkles',
-    href: '/assistant',
-    color: '#8b957b',
+    audiences: "all",
+    accent: "stone",
   },
   {
     id: 'impact',
@@ -167,22 +169,8 @@ export const MODULE_TILES = [
     icon: 'TrendingUp',
     href: '/giving/history',
     color: '#2b4d24',
-  },
-  {
-    id: 'profile',
-    title: 'Profile',
-    description: 'Manage your personal information and partnership details.',
-    icon: 'User',
-    href: '/profile',
-    color: '#2b4d24',
-  },
-  {
-    id: 'settings',
-    title: 'Settings',
-    description: 'Communication preferences, notifications, and account options.',
-    icon: 'Settings',
-    href: '/settings',
-    color: '#2b4d24',
+    audiences: ["individual", "major_donor", "church", "foundation", "daf", "ambassador", "volunteer"],
+    accent: "gold",
   },
   {
     id: 'support',
@@ -191,6 +179,78 @@ export const MODULE_TILES = [
     icon: 'MessageCircle',
     href: '#support',
     color: '#8b957b',
+    audiences: "all",
+    accent: "stone",
+  },
+  {
+    id: "profile",
+    title: "Profile",
+    description: "Review your contact details and partner profile.",
+    icon: "User",
+    href: "/profile",
+    color: "#2b4d24",
+    audiences: "all",
+    accent: "sage",
+  },
+  {
+    id: "foundation-portfolio",
+    title: "Grant Portfolio",
+    description: "Monitor reporting cadence and active grant milestones.",
+    icon: "Building2",
+    href: "/giving?view=grants",
+    color: "#2b4d24",
+    audiences: ["foundation"],
+    accent: "gold",
+  },
+  {
+    id: "church-toolkit",
+    title: "Church Toolkit",
+    description: "Mission Sunday resources and congregation materials.",
+    icon: "Church",
+    href: "/content?tag=church",
+    color: "#2b4d24",
+    audiences: ["church"],
+    accent: "stone",
+  },
+  {
+    id: "daf-checklist",
+    title: "DAF Checklist",
+    description: "Plan your next recommendation with guided steps.",
+    icon: "Wallet",
+    href: "/giving?view=daf",
+    color: "#2b4d24",
+    audiences: ["daf"],
+    accent: "gold",
+  },
+  {
+    id: "ambassador-kit",
+    title: "Ambassador Kit",
+    description: "Shareable assets, talking points, and outreach scripts.",
+    icon: "Megaphone",
+    href: "/content?tag=ambassador",
+    color: "#2b4d24",
+    audiences: ["ambassador"],
+    accent: "clay",
+  },
+  {
+    id: "volunteer-hub",
+    title: "Volunteer Hub",
+    description: "Training schedule, tasks, and orientation checklists.",
+    icon: "HandHeart",
+    href: "/dashboard#volunteer",
+    color: "#2b4d24",
+    audiences: ["volunteer"],
+    accent: "stone",
+  },
+  {
+    id: "stewardship-briefing",
+    title: "Stewardship Briefing",
+    description: "Priority initiatives and board-ready reporting.",
+    icon: "Star",
+    href: "/content?tag=stewardship",
+    color: "#2b4d24",
+    audiences: ["major_donor"],
+    accent: "gold",
   },
 ] as const;
 

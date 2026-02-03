@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { recordActivity } from "@/lib/mock-store";
+import type { User as UserType } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +19,7 @@ import { getGivingTier } from "@/lib/constants";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
 
 export default function ProfilePage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, updateDevUser, isDev } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -41,6 +43,23 @@ export default function ProfilePage() {
   function handleSave() {
     setSaving(true);
     setTimeout(() => {
+      if (isDev && updateDevUser && user) {
+        const updates: Partial<UserType> = {};
+        if (form.firstName && form.firstName !== user.firstName) updates.firstName = form.firstName;
+        if (form.lastName && form.lastName !== user.lastName) updates.lastName = form.lastName;
+        if (form.email && form.email !== user.email) updates.email = form.email;
+        if (form.phone && form.phone !== user.phone) updates.phone = form.phone;
+        if (Object.keys(updates).length > 0) {
+          updateDevUser(updates);
+          recordActivity({
+            id: `activity-${Date.now()}`,
+            type: "profile_updated",
+            userId: user.id,
+            createdAt: new Date().toISOString(),
+            metadata: { fields: Object.keys(updates).join(",") },
+          });
+        }
+      }
       setSaving(false);
       setSaved(true);
       toast.success("Profile updated");
@@ -81,7 +100,7 @@ export default function ProfilePage() {
               <h2 className="font-serif text-xl font-semibold text-[#1a1a1a]">{user?.firstName} {user?.lastName}</h2>
               <p className="text-sm text-[#666666]">{user?.email}</p>
               <div className="mt-3 flex justify-center gap-2">
-                <Badge className="bg-[#2b4d24] text-[#FFFEF9]">{user?.constituentType.replace("_", " ")}</Badge>
+                <Badge className="bg-[#2b4d24] text-[#FFFEF9]">Partner</Badge>
                 <Badge variant="outline" className="text-[#8b957b]">{tier.name}</Badge>
               </div>
               <Separator className="my-5" />

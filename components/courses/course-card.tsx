@@ -34,9 +34,16 @@ export function CourseCard({ course, progress, totalModules }: CourseCardProps) 
             <BookOpen className="h-12 w-12 text-[#2b4d24]/30" />
           </div>
         )}
-        <Badge className="absolute right-2 top-2 bg-[#2b4d24] text-[#FFFEF9]">
-          {course.accessLevel.replace("_", " ")}
-        </Badge>
+        <div className="absolute right-2 top-2 flex flex-col items-end gap-1">
+          <Badge className="bg-[#2b4d24] text-[#FFFEF9]">
+            {course.accessLevel.replace("_", " ")}
+          </Badge>
+          {course.isPaid && (
+            <Badge variant="secondary" className="text-[10px] bg-[#e1a730]/10 text-[#a36d4c]">
+              Paid - ${course.price ?? 0}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <CardHeader className="pb-2">

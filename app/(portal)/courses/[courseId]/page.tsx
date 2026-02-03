@@ -9,8 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/portal/empty-state";
 import { BookOpen, ChevronLeft, Clock, PlayCircle, CheckCircle2 } from "lucide-react";
+import { getMockNoteForModule, upsertMockNote } from "@/lib/mock-store";
+import { isDevBypass } from "@/lib/dev-mode";
 
 export default function CourseDetailPage() {
   const params = useParams<{ courseId: string }>();
@@ -18,6 +21,10 @@ export default function CourseDetailPage() {
   const { user } = useAuth();
   const { courses, modules, progress, isLoading, updateProgress } = useCourses(user?.id);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const [noteValue, setNoteValue] = useState("");
+  const [noteId, setNoteId] = useState<string | null>(null);
+  const [noteUpdatedAt, setNoteUpdatedAt] = useState<string | null>(null);
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const course = useMemo(
     () => courses.find((c) => c.id === courseId),
@@ -43,6 +50,15 @@ export default function CourseDetailPage() {
     }
   }, [activeModuleId, courseModules]);
 
+  useEffect(() => {
+    if (!isDevBypass || !user?.id || !activeModuleId) return;
+    const existing = getMockNoteForModule(user.id, activeModuleId);
+    setNoteValue(existing?.content ?? "");
+    setNoteId(existing?.id ?? null);
+    setNoteUpdatedAt(existing?.updatedAt ?? null);
+    setNoteSaved(false);
+  }, [activeModuleId, user?.id]);
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -66,6 +82,23 @@ export default function CourseDetailPage() {
   const activeModule =
     courseModules.find((m) => m.id === activeModuleId) ?? courseModules[0];
   const activeProgress = activeModule ? progressMap.get(activeModule.id) : undefined;
+
+  function saveNote() {
+    if (!user?.id || !activeModule) return;
+    if (!isDevBypass) return;
+    const entry = {
+      id: noteId ?? `note-${Date.now()}`,
+      userId: user.id,
+      moduleId: activeModule.id,
+      content: noteValue.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    upsertMockNote(entry);
+    setNoteId(entry.id);
+    setNoteUpdatedAt(entry.updatedAt);
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 2000);
+  }
 
   return (
     <div className="space-y-8">
@@ -142,9 +175,14 @@ export default function CourseDetailPage() {
                   <p className="text-xs text-[#999999]">Now Playing</p>
                   <h2 className="font-serif text-xl text-[#1a1a1a]">{activeModule?.title}</h2>
                 </div>
-                <Badge variant="outline" className="text-[10px] text-[#8b957b]">
-                  {activeModule ? Math.round(activeModule.durationSeconds / 60) : 0} min
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] text-[#8b957b]">
+                    {(activeModule?.type ?? "video").toUpperCase()}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px] text-[#8b957b]">
+                    {activeModule ? Math.round(activeModule.durationSeconds / 60) : 0} min
+                  </Badge>
+                </div>
               </div>
               <p className="text-sm text-[#666666]">
                 {activeModule?.description || "Follow along with this module to deepen your understanding."}
@@ -162,9 +200,12 @@ export default function CourseDetailPage() {
                 >
                   {activeProgress?.completed ? "Mark Incomplete" : "Mark Complete"}
                 </Button>
-                <Button variant="outline">
-                  Download Notes
-                </Button>
+                {activeModule?.resourceUrl && (
+                  <Button variant="outline" onClick={() => window.open(activeModule.resourceUrl, "_blank")}>
+                    Open Resource
+                  </Button>
+                )}
+                <Button variant="outline">Download Notes</Button>
               </div>
             </CardContent>
           </Card>
@@ -175,8 +216,27 @@ export default function CourseDetailPage() {
               <p className="text-sm text-[#666666]">
                 Capture key takeaways or questions as you go. These notes remain private and can be revisited later.
               </p>
-              <div className="rounded-xl glass-inset p-3 text-sm text-[#999999]">
-                Notes feature is in mock mode. Add your own journaling workflow here later.
+              <Textarea
+                value={noteValue}
+                onChange={(e) => setNoteValue(e.target.value)}
+                placeholder="Write down key takeaways, prayer requests, or follow-up ideas..."
+                rows={5}
+                className="bg-white/70"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#999999]">
+                <span>
+                  {noteUpdatedAt
+                    ? `Last saved ${new Date(noteUpdatedAt).toLocaleString()}`
+                    : "Not saved yet"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveNote}
+                  className={noteSaved ? "border-[#2b4d24] text-[#2b4d24]" : ""}
+                >
+                  {noteSaved ? "Saved" : "Save Note"}
+                </Button>
               </div>
             </CardContent>
           </Card>

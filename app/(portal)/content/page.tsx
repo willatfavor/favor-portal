@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useContent } from "@/hooks/use-content";
 import { ContentItem } from "@/types";
@@ -34,10 +35,43 @@ function normalizeType(item: ContentItem) {
 }
 
 export default function ContentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-[#666666]">Loading content...</div>
+        </div>
+      }
+    >
+      <ContentPageContent />
+    </Suspense>
+  );
+}
+
+function ContentPageContent() {
   const { user } = useAuth();
   const { items, isLoading } = useContent();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
+  const searchParams = useSearchParams();
+  const tagFilter = (searchParams.get("tag") ?? "").toLowerCase();
+  const typeParam = (searchParams.get("type") ?? "").toLowerCase();
+
+  useEffect(() => {
+    if (!typeParam) return;
+    const mapped = typeParam === "report"
+      ? "Reports"
+      : typeParam === "update"
+        ? "Updates"
+        : typeParam === "resource"
+          ? "Resources"
+          : typeParam === "prayer"
+            ? "Prayer"
+            : typeParam === "story"
+              ? "Stories"
+              : "All";
+    setFilter(mapped);
+  }, [typeParam]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -47,9 +81,11 @@ export default function ContentPage() {
         item.title.toLowerCase().includes(query) ||
         item.excerpt.toLowerCase().includes(query) ||
         item.tags.join(" ").toLowerCase().includes(query);
-      return matchFilter && matchSearch;
+      const matchTag =
+        !tagFilter || item.tags.some((tag) => tag.toLowerCase() === tagFilter);
+      return matchFilter && matchSearch && matchTag;
     });
-  }, [items, filter, search]);
+  }, [items, filter, search, tagFilter]);
 
   const accessible = useMemo(() => {
     const type = user?.constituentType ?? "individual";
@@ -107,6 +143,11 @@ export default function ContentPage() {
           </Button>
         ))}
       </div>
+      {tagFilter && (
+        <p className="text-xs text-[#999999]">
+          Filtered by tag: <span className="text-[#666666]">{tagFilter}</span>
+        </p>
+      )}
 
       <section>
         <SectionHeader title="Available to You" subtitle={`${accessible.length} items`} />
@@ -134,8 +175,10 @@ export default function ContentPage() {
                           </Badge>
                         ))}
                       </div>
-                      <Button variant="ghost" size="sm" className="text-[#2b4d24]">
-                        View <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                      <Button variant="ghost" size="sm" className="text-[#2b4d24]" asChild>
+                        <Link href={`/content/${item.id}`}>
+                          View <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                        </Link>
                       </Button>
                     </div>
                   </CardContent>

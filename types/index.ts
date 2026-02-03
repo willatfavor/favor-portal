@@ -32,6 +32,7 @@ export interface Gift {
   blackbaudGiftId?: string;
   isRecurring: boolean;
   receiptSent: boolean;
+  source?: 'imported' | 'portal';
 }
 
 export interface RecurringGift {
@@ -85,6 +86,12 @@ export interface Course {
   sortOrder: number;
   createdAt: string;
   moduleCount?: number;
+  status?: 'draft' | 'published';
+  isLocked?: boolean;
+  isPaid?: boolean;
+  price?: number;
+  tags?: string[];
+  coverImage?: string;
 }
 
 export interface CourseModule {
@@ -95,6 +102,9 @@ export interface CourseModule {
   cloudflareVideoId: string;
   sortOrder: number;
   durationSeconds: number;
+  type?: 'video' | 'reading' | 'quiz';
+  resourceUrl?: string;
+  notes?: string;
 }
 
 export interface UserCourseProgress {
@@ -105,6 +115,14 @@ export interface UserCourseProgress {
   completedAt?: string;
   watchTimeSeconds: number;
   lastWatchedAt?: string;
+}
+
+export interface CourseNote {
+  id: string;
+  userId: string;
+  moduleId: string;
+  content: string;
+  updatedAt: string;
 }
 
 export interface FoundationGrant {
@@ -128,6 +146,40 @@ export interface OnboardingSurvey {
   interests: string[];
   churchConnection: boolean;
   completedAt: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  sender: 'partner' | 'staff';
+  message: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  category: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  createdAt: string;
+  requesterName?: string;
+  requesterEmail?: string;
+  messages?: SupportMessage[];
+}
+
+export interface ActivityEvent {
+  id: string;
+  type:
+    | 'gift_created'
+    | 'course_completed'
+    | 'course_progress'
+    | 'content_viewed'
+    | 'support_ticket'
+    | 'profile_updated'
+    | 'login';
+  userId: string;
+  createdAt: string;
+  metadata?: Record<string, string | number | boolean>;
 }
 
 export interface BlackbaudConstituent {

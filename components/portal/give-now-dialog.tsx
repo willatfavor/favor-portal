@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Heart, CheckCircle, Download, ArrowLeft, ArrowRight } from "lucide-react";
-import { addLocalGift } from "@/lib/local-storage";
+import { addMockGift, recordActivity } from "@/lib/mock-store";
 import { GIVING_DESIGNATIONS } from "@/lib/portal-mock-data";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -70,15 +70,26 @@ export function GiveNowDialog({ trigger, onGiftComplete }: GiveNowDialogProps) {
     if (effectiveAmount <= 0) return;
     setProcessing(true);
     setTimeout(() => {
-      const gift = addLocalGift({
+      const giftId = `portal-gift-${Date.now()}`;
+      const gift = {
+        id: giftId,
         userId: user?.id ?? "dev-user",
         amount: effectiveAmount,
         date: new Date().toISOString(),
         designation,
         isRecurring: frequency !== "one-time",
         receiptSent: true,
+        source: "portal" as const,
+      };
+      addMockGift(gift);
+      recordActivity({
+        id: `activity-${Date.now()}`,
+        type: "gift_created",
+        userId: gift.userId,
+        createdAt: new Date().toISOString(),
+        metadata: { amount: effectiveAmount, designation },
       });
-      setGiftId(gift.id);
+      setGiftId(giftId);
       setProcessing(false);
       setStep("receipt");
       onGiftComplete?.();
@@ -90,7 +101,7 @@ export function GiveNowDialog({ trigger, onGiftComplete }: GiveNowDialogProps) {
 
   function downloadReceipt() {
     const receiptText = [
-      "FAVOR INTERNATIONAL — GIFT RECEIPT",
+      "FAVOR INTERNATIONAL - GIFT RECEIPT",
       "=".repeat(42),
       "",
       `Receipt #: ${giftId}`,

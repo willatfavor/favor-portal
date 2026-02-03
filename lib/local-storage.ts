@@ -15,13 +15,13 @@ function setItem<T>(key: string, value: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // quota exceeded — ignore
+    // quota exceeded - ignore
   }
 }
 
 // --- Notifications ---
-import { Notification, INITIAL_NOTIFICATIONS, SupportTicket } from './portal-mock-data';
-import { Gift } from '@/types';
+import { Notification, INITIAL_NOTIFICATIONS } from './portal-mock-data';
+import { Gift, SupportTicket } from '@/types';
 
 const NOTIF_KEY = 'favor_notifications';
 const TICKETS_KEY = 'favor_support_tickets';
@@ -57,6 +57,9 @@ export function getSupportTickets(): SupportTicket[] {
 
 export function saveSupportTickets(tickets: SupportTicket[]): void {
   setItem(TICKETS_KEY, tickets);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('favor:support'));
+  }
 }
 
 export function addSupportTicket(ticket: Omit<SupportTicket, 'id' | 'status' | 'createdAt'>): SupportTicket {

@@ -28,22 +28,14 @@ import {
   User,
   Heart,
   GraduationCap,
-  Settings,
   Home,
   History,
   FileText,
-  Sparkles,
   Shield,
-  Church,
-  Building2,
-  Wallet,
-  Megaphone,
-  HandHeart,
-  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationPanel } from "./notification-panel";
-import { APP_CONFIG } from "@/lib/constants";
+import { APP_CONFIG, getGivingTier } from "@/lib/constants";
 import { DevTools } from "./dev-tools";
 
 const BASE_NAV_ITEMS = [
@@ -52,9 +44,7 @@ const BASE_NAV_ITEMS = [
   { name: "History", href: "/giving/history", icon: History },
   { name: "Courses", href: "/courses", icon: GraduationCap },
   { name: "Content", href: "/content", icon: FileText },
-  { name: "Insights", href: "/assistant", icon: Sparkles },
   { name: "Profile", href: "/profile", icon: User },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface PortalShellProps {
@@ -68,44 +58,20 @@ export function PortalShell({ children }: PortalShellProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const navItems = useMemo(() => {
-    const dynamic: typeof BASE_NAV_ITEMS = [];
-
-    if (user?.constituentType === "major_donor") {
-      dynamic.push({ name: "Major Donor", href: "/major-donor", icon: Star });
-    }
-    if (user?.constituentType === "church") {
-      dynamic.push({ name: "Church", href: "/church", icon: Church });
-    }
-    if (user?.constituentType === "foundation") {
-      dynamic.push({ name: "Foundation", href: "/foundation", icon: Building2 });
-    }
-    if (user?.constituentType === "daf") {
-      dynamic.push({ name: "DAF", href: "/daf", icon: Wallet });
-    }
-    if (user?.constituentType === "ambassador") {
-      dynamic.push({ name: "Ambassador", href: "/ambassador", icon: Megaphone });
-    }
-    if (user?.constituentType === "volunteer") {
-      dynamic.push({ name: "Volunteer", href: "/volunteer", icon: HandHeart });
-    }
     if (user?.isAdmin) {
-      dynamic.push({ name: "Admin", href: "/admin", icon: Shield });
+      return [...BASE_NAV_ITEMS, { name: "Admin", href: "/admin", icon: Shield }];
     }
-
-    return [
-      ...BASE_NAV_ITEMS.slice(0, 4),
-      ...dynamic,
-      ...BASE_NAV_ITEMS.slice(4),
-    ];
+    return BASE_NAV_ITEMS;
   }, [user]);
 
   const activeHref = useMemo(() => {
-    const exact = navItems.find((item) => pathname === item.href);
-    if (exact) return exact.href;
-    const prefix = navItems.find(
-      (item) => item.href !== "/dashboard" && pathname.startsWith(item.href)
-    );
-    return prefix?.href;
+    const matches = navItems.filter((item) => {
+      if (pathname === item.href) return true;
+      if (item.href === "/dashboard") return false;
+      return pathname.startsWith(`${item.href}/`);
+    });
+    if (matches.length === 0) return undefined;
+    return matches.sort((a, b) => b.href.length - a.href.length)[0].href;
   }, [pathname, navItems]);
 
   const initials = user
@@ -116,6 +82,8 @@ export function PortalShell({ children }: PortalShellProps) {
     .split("/")
     .filter(Boolean)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " "));
+
+  const tierLabel = getGivingTier(user?.lifetimeGivingTotal ?? 0).name;
 
   return (
     <div className="min-h-screen bg-transparent">
@@ -154,6 +122,7 @@ export function PortalShell({ children }: PortalShellProps) {
                           <Link
                             href={item.href}
                             onClick={() => setMenuOpen(false)}
+                            aria-current={isActive ? "page" : undefined}
                             className={cn(
                               "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium glass-transition",
                               isActive
@@ -243,14 +212,11 @@ export function PortalShell({ children }: PortalShellProps) {
               <DropdownMenuContent align="end" className="w-52 glass-elevated rounded-xl border-[#c5ccc2]/20">
                 <DropdownMenuLabel className="font-normal">
                   <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-xs text-[#8b957b]">{user?.constituentType.replace("_", " ")}</p>
+                  <p className="text-xs text-[#8b957b]">{tierLabel}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-[#c5ccc2]/20" />
                 <DropdownMenuItem asChild>
                   <Link href="/profile" className="flex items-center gap-2 cursor-pointer"><User className="h-4 w-4" /> Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex items-center gap-2 cursor-pointer"><Settings className="h-4 w-4" /> Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[#c5ccc2]/20" />
                 <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 cursor-pointer text-red-600 focus:text-red-600">

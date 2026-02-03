@@ -10,6 +10,7 @@ import {
   initMockStore,
   setActiveMockUserId,
   updateMockUser,
+  recordActivity,
 } from '@/lib/mock-store';
 
 interface AuthContextType {
@@ -35,6 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const activeUser = getMockUserById(activeId);
     setUser(activeUser);
     setIsLoading(false);
+    if (activeUser) {
+      recordActivity({
+        id: `activity-${Date.now()}`,
+        type: 'login',
+        userId: activeUser.id,
+        createdAt: new Date().toISOString(),
+        metadata: { source: 'dev' },
+      });
+    }
   }
 
   async function fetchUser() {
@@ -122,6 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveMockUserId(userId);
     const next = getMockUserById(userId);
     setUser(next);
+    if (next) {
+      recordActivity({
+        id: `activity-${Date.now()}`,
+        type: 'login',
+        userId: next.id,
+        createdAt: new Date().toISOString(),
+        metadata: { source: 'dev' },
+      });
+    }
   };
 
   const updateDevUser = (updates: Partial<User>) => {

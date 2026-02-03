@@ -10,6 +10,7 @@ import {
   getMockModules,
   getMockProgressForUser,
   upsertMockProgress,
+  recordActivity,
 } from '@/lib/mock-store';
 
 interface UseCoursesReturn {
@@ -121,6 +122,18 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
         lastWatchedAt: new Date().toISOString(),
       };
       upsertMockProgress(entry);
+      const module = getMockModules().find((m) => m.id === moduleId);
+      recordActivity({
+        id: `activity-${Date.now()}`,
+        type: updates.completed ? 'course_completed' : 'course_progress',
+        userId,
+        createdAt: new Date().toISOString(),
+        metadata: {
+          moduleId,
+          courseId: module?.courseId ?? '',
+          completed: updates.completed ?? false,
+        },
+      });
       setProgress(getMockProgressForUser(userId));
       return;
     }
