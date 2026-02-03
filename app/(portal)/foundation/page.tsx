@@ -38,19 +38,19 @@ export default function FoundationDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Total Granted</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">{formatCurrency(totalGranted)}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Active Grants</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">{activeGrants}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Years Partnered</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">3+</CardTitle>
@@ -59,7 +59,7 @@ export default function FoundationDashboardPage() {
       </div>
 
       <Tabs defaultValue="grants" className="w-full">
-        <TabsList className="bg-[#F5F3EF]">
+        <TabsList className="glass-subtle">
           <TabsTrigger value="grants" className="data-[state=active]:bg-[#2b4d24] data-[state=active]:text-white">
             Grant Portfolio
           </TabsTrigger>
@@ -81,7 +81,7 @@ export default function FoundationDashboardPage() {
           ) : (
             <div className="grid gap-4">
               {grants.map((grant) => (
-                <Card key={grant.id} className="hover:shadow-md transition-shadow">
+                <Card key={grant.id} className="glass-hover">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -131,8 +131,8 @@ export default function FoundationDashboardPage() {
                               </div>
                             </div>
                             {grant.nextReportDue && (
-                              <div className="bg-yellow-50 p-4 rounded-lg">
-                                <p className="text-sm font-medium text-yellow-800">
+                              <div className="glass-inset border border-[#b08b3e]/25 p-4 rounded-lg">
+                                <p className="text-sm font-medium text-[#7d6330]">
                                   Next Report Due: {formatDate(grant.nextReportDue)}
                                 </p>
                               </div>
@@ -164,7 +164,7 @@ export default function FoundationDashboardPage() {
               <CardContent>
                 <div className="space-y-3">
                   {['2024 Annual Impact Report', 'Q4 2024 Financial Summary', 'Education Program Outcomes 2024', 'Healthcare Initiative Report'].map((report, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 bg-[#F5F3EF] rounded-lg">
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg glass-inset glass-transition">
                       <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-[#2b4d24]" />
                         <span className="font-medium">{report}</span>
@@ -180,7 +180,7 @@ export default function FoundationDashboardPage() {
 
         <TabsContent value="resources" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -193,7 +193,7 @@ export default function FoundationDashboardPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">

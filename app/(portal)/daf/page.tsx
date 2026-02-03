@@ -51,7 +51,7 @@ export default function DafDashboardPage() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Lifetime DAF Grants</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -59,7 +59,7 @@ export default function DafDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">YTD Grants</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -67,7 +67,7 @@ export default function DafDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Total Grants</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -75,7 +75,7 @@ export default function DafDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Avg Grant Size</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -88,7 +88,7 @@ export default function DafDashboardPage() {
       </div>
 
       <Tabs defaultValue="grants" className="w-full">
-        <TabsList className="bg-[#f5f5f0]">
+        <TabsList className="glass-subtle">
           <TabsTrigger 
             value="grants" 
             className="data-[state=active]:bg-[#2b4d24] data-[state=active]:text-white"
@@ -123,7 +123,7 @@ export default function DafDashboardPage() {
           ) : (
             <div className="space-y-4">
               {dafGifts.map((gift) => (
-                <Card key={gift.id} className="hover:shadow-md transition-shadow">
+                <Card key={gift.id} className="glass-hover">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
@@ -159,7 +159,7 @@ export default function DafDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="bg-[#f5f5f0] p-4 rounded-lg">
+              <div className="glass-inset p-4 rounded-lg">
                 <h4 className="font-medium text-[#1a1a1a] mb-2">Our Organization Information</h4>
                 <div className="space-y-2 text-sm">
                   <p><span className="text-[#666666]">Legal Name:</span> Favor International, Inc.</p>
@@ -180,7 +180,7 @@ export default function DafDashboardPage() {
                 </div>
               </div>
 
-              <div className="bg-[#2b4d24]/10 border border-[#2b4d24]/20 p-4 rounded-lg">
+              <div className="glass-inset border border-[#2b4d24]/20 p-4 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Info className="h-5 w-5 text-[#2b4d24] mt-0.5" />
                   <div>
@@ -198,7 +198,7 @@ export default function DafDashboardPage() {
 
         <TabsContent value="resources" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -219,7 +219,7 @@ export default function DafDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -240,7 +240,7 @@ export default function DafDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -261,7 +261,7 @@ export default function DafDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">

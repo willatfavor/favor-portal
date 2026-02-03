@@ -4,7 +4,7 @@ import { MagicLinkForm } from '@/components/auth/magic-link-form';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FFFEF9] p-4">
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <img 

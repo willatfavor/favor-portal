@@ -22,7 +22,7 @@ export function Header() {
     : "??";
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#e5e5e0] bg-white px-6 shadow-sm">
+    <header className="glass-bar sticky top-0 z-50 flex h-16 items-center justify-between px-6">
       {/* Left side - Breadcrumb or page title could go here */}
       <div className="flex items-center">
         <h1 className="font-['Cormorant_Garamond'] text-xl font-semibold text-[#2b4d24]">
@@ -36,7 +36,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-[#666666] hover:text-[#1a1a1a]"
+          className="relative text-[#6f7766] hover:text-[#1a1a1a] glass-transition"
         >
           <Bell className="h-5 w-5" />
           <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-[#2b4d24]" />
@@ -47,7 +47,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-2 px-2 hover:bg-[#f5f5f0]"
+              className="flex items-center gap-2 px-2 hover:bg-white/60 glass-transition"
             >
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatarUrl} alt={`${user?.firstName} ${user?.lastName}`} />
@@ -65,7 +65,7 @@ export function Header() {
               </div>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-56 glass-elevated rounded-xl border-[#d9e1d2]/50">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

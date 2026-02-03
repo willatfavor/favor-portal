@@ -4,6 +4,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { Gift, RecurringGift } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/types/database';
+import { isDevBypass } from '@/lib/dev-mode';
+import {
+  getMockGiftsForUser,
+  getMockRecurringGiftsForUser,
+} from '@/lib/mock-store';
+import { getLocalGifts } from '@/lib/local-storage';
 
 interface UseGivingReturn {
   gifts: Gift[];
@@ -12,14 +18,18 @@ interface UseGivingReturn {
   error: Error | null;
   totalGiven: number;
   ytdGiven: number;
+  refresh: () => void;
 }
 
-export function useGiving(userId: string | undefined): UseGivingReturn {
+export function useGiving(userId: string | undefined, refreshKey?: number): UseGivingReturn {
   const [gifts, setGifts] = useState<Gift[]>([]);
   const [recurringGifts, setRecurringGifts] = useState<RecurringGift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const supabase = useMemo(() => createClient(), []);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const refresh = () => setRefreshToken((value) => value + 1);
 
   useEffect(() => {
     if (!userId) {
@@ -31,6 +41,18 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
     async function fetchGiving() {
       try {
         setIsLoading(true);
+
+        if (isDevBypass) {
+          const localGifts = getLocalGifts().filter((g) => g.userId === activeUserId);
+          const mockGifts = getMockGiftsForUser(activeUserId);
+          const combined = [...localGifts, ...mockGifts].sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          const recurring = getMockRecurringGiftsForUser(activeUserId);
+          setGifts(combined);
+          setRecurringGifts(recurring);
+          return;
+        }
 
         // Fetch gifts
         const { data: giftsData, error: giftsError } = await supabase
@@ -80,7 +102,7 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
     }
 
     fetchGiving();
-  }, [userId, supabase]);
+  }, [userId, supabase, refreshKey, refreshToken]);
 
   const totalGiven = gifts.reduce((sum, g) => sum + g.amount, 0);
   
@@ -89,5 +111,5 @@ export function useGiving(userId: string | undefined): UseGivingReturn {
     .filter(g => new Date(g.date).getFullYear() === currentYear)
     .reduce((sum, g) => sum + g.amount, 0);
 
-  return { gifts, recurringGifts, isLoading, error, totalGiven, ytdGiven };
+  return { gifts, recurringGifts, isLoading, error, totalGiven, ytdGiven, refresh };
 }

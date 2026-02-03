@@ -31,19 +31,28 @@ import {
   Settings,
   Home,
   History,
-  TrendingUp,
-  MessageCircle,
+  FileText,
+  Sparkles,
+  Shield,
+  Church,
+  Building2,
+  Wallet,
+  Megaphone,
+  HandHeart,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NotificationPanel } from "./notification-panel";
 import { APP_CONFIG } from "@/lib/constants";
+import { DevTools } from "./dev-tools";
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { name: "Home", href: "/dashboard", icon: Home },
   { name: "Giving", href: "/giving", icon: Heart },
   { name: "History", href: "/giving/history", icon: History },
   { name: "Courses", href: "/courses", icon: GraduationCap },
-  { name: "Impact", href: "/giving/history", icon: TrendingUp },
+  { name: "Content", href: "/content", icon: FileText },
+  { name: "Insights", href: "/assistant", icon: Sparkles },
   { name: "Profile", href: "/profile", icon: User },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -58,14 +67,46 @@ export function PortalShell({ children }: PortalShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
+  const navItems = useMemo(() => {
+    const dynamic: typeof BASE_NAV_ITEMS = [];
+
+    if (user?.constituentType === "major_donor") {
+      dynamic.push({ name: "Major Donor", href: "/major-donor", icon: Star });
+    }
+    if (user?.constituentType === "church") {
+      dynamic.push({ name: "Church", href: "/church", icon: Church });
+    }
+    if (user?.constituentType === "foundation") {
+      dynamic.push({ name: "Foundation", href: "/foundation", icon: Building2 });
+    }
+    if (user?.constituentType === "daf") {
+      dynamic.push({ name: "DAF", href: "/daf", icon: Wallet });
+    }
+    if (user?.constituentType === "ambassador") {
+      dynamic.push({ name: "Ambassador", href: "/ambassador", icon: Megaphone });
+    }
+    if (user?.constituentType === "volunteer") {
+      dynamic.push({ name: "Volunteer", href: "/volunteer", icon: HandHeart });
+    }
+    if (user?.isAdmin) {
+      dynamic.push({ name: "Admin", href: "/admin", icon: Shield });
+    }
+
+    return [
+      ...BASE_NAV_ITEMS.slice(0, 4),
+      ...dynamic,
+      ...BASE_NAV_ITEMS.slice(4),
+    ];
+  }, [user]);
+
   const activeHref = useMemo(() => {
-    const exact = NAV_ITEMS.find((item) => pathname === item.href);
+    const exact = navItems.find((item) => pathname === item.href);
     if (exact) return exact.href;
-    const prefix = NAV_ITEMS.find(
+    const prefix = navItems.find(
       (item) => item.href !== "/dashboard" && pathname.startsWith(item.href)
     );
     return prefix?.href;
-  }, [pathname]);
+  }, [pathname, navItems]);
 
   const initials = user
     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
@@ -105,7 +146,7 @@ export function PortalShell({ children }: PortalShellProps) {
                 </SheetHeader>
                 <nav className="px-3 py-4">
                   <ul className="space-y-0.5">
-                    {NAV_ITEMS.map((item) => {
+                    {navItems.map((item) => {
                       const isActive = item.href === activeHref;
                       const Icon = item.icon;
                       return (
@@ -179,6 +220,8 @@ export function PortalShell({ children }: PortalShellProps) {
                 <NotificationPanel onClose={() => setNotifOpen(false)} />
               </SheetContent>
             </Sheet>
+
+            <DevTools />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

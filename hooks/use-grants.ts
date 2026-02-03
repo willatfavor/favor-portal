@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { FoundationGrant } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/types/database';
+import { isDevBypass } from '@/lib/dev-mode';
+import { getMockGrantsForUser } from '@/lib/mock-store';
 
 interface UseGrantsReturn {
   grants: FoundationGrant[];
@@ -29,6 +31,11 @@ export function useGrants(userId: string | undefined): UseGrantsReturn {
     async function fetchGrants() {
       try {
         setIsLoading(true);
+
+        if (isDevBypass) {
+          setGrants(getMockGrantsForUser(activeUserId));
+          return;
+        }
 
         const { data, error } = await supabase
           .from('foundation_grants')

@@ -2,57 +2,79 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { useCourses } from "@/hooks/use-courses";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CourseCard } from "@/components/courses/course-card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Search } from "lucide-react";
+import { CourseCard } from "@/components/courses/course-card";
+import { GraduationCap, Search, BookOpen, Trophy, PlayCircle, BarChart3 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import Link from "next/link";
+import { SectionHeader } from "@/components/portal/section-header";
+import { EmptyState } from "@/components/portal/empty-state";
+import { canAccessCourse } from "@/lib/constants";
 
 export default function CoursesPage() {
   const { user } = useAuth();
-  const { courses, progress, isLoading } = useCourses(user?.id);
+  const { courses, modules, progress, isLoading } = useCourses(user?.id);
   const [searchQuery, setSearchQuery] = useState("");
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-64 items-center justify-center">
         <div className="text-[#666666]">Loading courses...</div>
       </div>
     );
   }
 
-  const filteredCourses = courses.filter(
+  const accessibleCourses = courses.filter((course) =>
+    canAccessCourse(course.accessLevel, user?.constituentType ?? "individual")
+  );
+  const lockedCourses = courses.filter(
+    (course) => !canAccessCourse(course.accessLevel, user?.constituentType ?? "individual")
+  );
+
+  const filteredCourses = accessibleCourses.filter(
     (course) =>
       course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       course.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate stats
-  const completedCourses = courses.filter((course) => {
-    const courseProgress = progress.filter((p) => p.moduleId.startsWith(course.id));
-    return courseProgress.length > 0 && courseProgress.every((p) => p.completed);
+  const courseProgressSummary = (courseId: string) => {
+    const courseModules = modules.filter((m) => m.courseId === courseId);
+    const courseProgress = progress.filter((p) =>
+      courseModules.some((m) => m.id === p.moduleId)
+    );
+    return { courseModules, courseProgress };
+  };
+
+  const completedCourses = accessibleCourses.filter((course) => {
+    const { courseModules, courseProgress } = courseProgressSummary(course.id);
+    return courseModules.length > 0 && courseProgress.length > 0 && courseProgress.every((p) => p.completed);
   }).length;
 
-  const inProgressCourses = courses.filter((course) => {
-    const courseProgress = progress.filter((p) => p.moduleId.startsWith(course.id));
-    return courseProgress.some((p) => p.completed) && !courseProgress.every((p) => p.completed);
+  const inProgressCourses = accessibleCourses.filter((course) => {
+    const { courseModules, courseProgress } = courseProgressSummary(course.id);
+    return courseModules.length > 0 && courseProgress.some((p) => p.completed) && !courseProgress.every((p) => p.completed);
   }).length;
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-10">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-['Cormorant_Garamond'] text-3xl font-semibold text-[#1a1a1a]">
-            Course Catalog
-          </h1>
-          <p className="mt-1 text-[#666666]">
+          <nav className="mb-2 flex items-center gap-1 text-xs text-[#999999]">
+            <Link href="/dashboard" className="hover:text-[#666666]">Home</Link>
+            <span>/</span>
+            <span className="font-medium text-[#1a1a1a]">Courses</span>
+          </nav>
+          <h1 className="font-serif text-3xl font-semibold text-[#1a1a1a]">Course Catalog</h1>
+          <p className="mt-1 text-sm text-[#666666]">
             Deepen your understanding of Favor&apos;s mission and impact through our partner courses.
           </p>
         </div>
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#666666]" />
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#999999]" />
           <Input
             placeholder="Search courses..."
             value={searchQuery}
@@ -63,87 +85,94 @@ export default function CoursesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[#666666]">Total Courses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-[#1a1a1a]">{courses.length}</p>
-            <p className="text-xs text-[#666666]">Available to you</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[#666666]">Completed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-[#2b4d24]">{completedCourses}</p>
-            <p className="text-xs text-[#666666]">Courses finished</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[#666666]">In Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-[#1a1a1a]">{inProgressCourses}</p>
-            <p className="text-xs text-[#666666]">Active courses</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[#666666]">Your Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-[#1a1a1a]">
-              {courses.length > 0 ? Math.round((completedCourses / courses.length) * 100) : 0}%
-            </p>
-            <p className="text-xs text-[#666666]">Completion rate</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Course Grid */}
-      <div>
-        <div className="mb-4 flex items-center gap-2">
-          <GraduationCap className="h-5 w-5 text-[#2b4d24]" />
-          <h2 className="font-['Cormorant_Garamond'] text-2xl font-semibold text-[#1a1a1a]">
-            All Courses
-          </h2>
-          <Badge variant="secondary" className="ml-2">
-            {filteredCourses.length}
-          </Badge>
-        </div>
-
-        {filteredCourses.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredCourses.map((course) => {
-              const courseProgress = progress.filter((p) => p.moduleId.startsWith(course.id));
-              const completedCount = courseProgress.filter((p) => p.completed).length;
-              const totalCount = courseProgress.length || 5;
-
-              return (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  progress={completedCount}
-                  totalModules={totalCount}
-                />
-              );
-            })}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <GraduationCap className="mx-auto h-12 w-12 text-[#e5e5e0]" />
-              <p className="mt-4 text-[#666666]">
-                {searchQuery ? "No courses match your search." : "No courses available yet."}
-              </p>
+      <div className="grid gap-4 sm:grid-cols-4">
+        {[
+          { label: "Total Courses", value: accessibleCourses.length, icon: BookOpen, sub: "Available to you" },
+          { label: "Completed", value: completedCourses, icon: Trophy, sub: "Courses finished" },
+          { label: "In Progress", value: inProgressCourses, icon: PlayCircle, sub: "Active courses" },
+          {
+            label: "Completion",
+            value: accessibleCourses.length > 0 ? `${Math.round((completedCourses / accessibleCourses.length) * 100)}%` : "0%",
+            icon: BarChart3,
+            sub: "Overall rate",
+          },
+        ].map((stat) => (
+          <Card key={stat.label}>
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#2b4d24]/5">
+                <stat.icon className="h-5 w-5 text-[#2b4d24]" />
+              </div>
+              <div>
+                <p className="text-xs text-[#999999]">{stat.label}</p>
+                <p className="text-xl font-semibold text-[#1a1a1a]">{stat.value}</p>
+                <p className="text-[10px] text-[#999999]">{stat.sub}</p>
+              </div>
             </CardContent>
           </Card>
-        )}
+        ))}
       </div>
+
+      {/* Course grid */}
+      <section>
+        <SectionHeader
+          title="All Courses"
+          subtitle={`${filteredCourses.length} available`}
+        />
+        <div className="mt-5">
+          {filteredCourses.length > 0 ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredCourses.map((course) => {
+                const { courseModules, courseProgress } = courseProgressSummary(course.id);
+                const completedCount = courseProgress.filter((p) => p.completed).length;
+                const totalCount = courseModules.length || courseProgress.length || 0;
+                return (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    progress={completedCount}
+                    totalModules={totalCount || 0}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={GraduationCap}
+              title={searchQuery ? "No courses match your search" : "No courses available yet"}
+              description={
+                searchQuery
+                  ? "Try a different search term to find what you're looking for."
+                  : "Check back soon for new partner learning content."
+              }
+            />
+          )}
+        </div>
+      </section>
+
+      {lockedCourses.length > 0 && (
+        <section>
+          <SectionHeader title="Locked Courses" subtitle="Available with additional access" />
+          <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {lockedCourses.map((course) => (
+              <Card key={course.id} className="glass-subtle border-0">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline" className="text-[10px] text-[#8b957b]">
+                      {course.accessLevel.replace("_", " ")}
+                    </Badge>
+                    <span className="text-xs text-[#999999]">Locked</span>
+                  </div>
+                  <h3 className="font-serif text-lg text-[#1a1a1a]">{course.title}</h3>
+                  <p className="text-sm text-[#999999] line-clamp-2">{course.description}</p>
+                  <Button variant="outline" size="sm" className="w-full">
+                    Request Access
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -32,25 +32,25 @@ export default function ChurchPortalPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Congregation Size</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">~500</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Giving This Year</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">$5,500</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Mission Sunday</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">2x/year</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#F5F3EF] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-gray-600">Partnership Length</CardDescription>
             <CardTitle className="font-serif text-3xl text-[#2b4d24]">4 Years</CardTitle>
@@ -59,7 +59,7 @@ export default function ChurchPortalPage() {
       </div>
 
       <Tabs defaultValue="resources" className="w-full">
-        <TabsList className="bg-[#F5F3EF]">
+        <TabsList className="glass-subtle">
           <TabsTrigger value="resources" className="data-[state=active]:bg-[#2b4d24] data-[state=active]:text-white">
             Congregation Resources
           </TabsTrigger>
@@ -73,7 +73,7 @@ export default function ChurchPortalPage() {
 
         <TabsContent value="resources" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -87,7 +87,7 @@ export default function ChurchPortalPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -101,7 +101,7 @@ export default function ChurchPortalPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -115,7 +115,7 @@ export default function ChurchPortalPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -146,7 +146,7 @@ export default function ChurchPortalPage() {
                   { name: 'Annual Report', description: 'Printed copies for your congregation', icon: Package },
                   { name: 'Kids Activity Book', description: 'Educational activities about Africa', icon: Package },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-[#F5F3EF] rounded-lg">
+                  <div key={i} className="flex items-center justify-between p-4 rounded-lg glass-inset glass-transition">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-[#2b4d24]/10 rounded">
                         <item.icon className="h-5 w-5 text-[#2b4d24]" />
@@ -177,7 +177,7 @@ export default function ChurchPortalPage() {
                   { title: 'Church Partners Conference', date: 'June 20, 2025', location: 'Virtual' },
                   { title: 'Youth Mission Experience', date: 'July 10-20, 2025', location: 'Kenya' },
                 ].map((event, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-[#F5F3EF] rounded-lg">
+                  <div key={i} className="flex items-center justify-between p-4 rounded-lg glass-inset glass-transition">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-[#2b4d24]/10 rounded">
                         <Calendar className="h-5 w-5 text-[#2b4d24]" />

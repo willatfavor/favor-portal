@@ -1,6 +1,5 @@
 import { AuthProvider } from "@/hooks/use-auth";
-import { Sidebar } from "@/components/portal/sidebar";
-import { Header } from "@/components/portal/header";
+import { PortalShell } from "@/components/portal/portal-shell";
 
 export default function PortalLayout({
   children,
@@ -9,18 +8,7 @@ export default function PortalLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="flex h-screen bg-[#FFFEF9]">
-        {/* Sidebar */}
-        <Sidebar />
-
-        {/* Main Content */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            {children}
-          </main>
-        </div>
-      </div>
+      <PortalShell>{children}</PortalShell>
     </AuthProvider>
   );
 }

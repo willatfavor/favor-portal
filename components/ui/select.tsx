@@ -37,7 +37,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-md border border-[#e5e5e0] bg-white px-3 py-2 text-sm whitespace-nowrap shadow-sm focus:outline-none focus:ring-1 focus:ring-[#2b4d24] disabled:cursor-not-allowed disabled:opacity-50",
+        "glass-inset glass-transition flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#2b4d24]/40 focus-visible:border-[#b8c4b2] disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 max-h-[var(--radix-select-viewport-height)] min-w-[8rem] overflow-hidden rounded-md border border-[#e5e5e0] bg-white text-[#1a1a1a] shadow-md data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+          "glass-elevated glass-transition relative z-50 max-h-[var(--radix-select-viewport-height)] min-w-[8rem] overflow-hidden rounded-xl text-[#1a1a1a] data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
@@ -92,7 +92,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-[#f5f5f0] focus:text-[#1a1a1a] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "glass-transition relative flex w-full cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-white/60 focus:text-[#1a1a1a] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
       {...props}
@@ -114,7 +114,7 @@ function SelectSeparator({
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
-      className={cn("bg-[#e5e5e0] -mx-1 my-1 h-px pointer-events-none", className)}
+      className={cn("bg-[#d9e1d2] -mx-1 my-1 h-px pointer-events-none", className)}
       {...props}
     />
   )

@@ -13,7 +13,7 @@ function Progress({ className, value, ...props }: React.ComponentProps<"div"> & 
       aria-valuemax={100}
       aria-valuenow={value}
       className={cn(
-        "relative h-2 w-full overflow-hidden rounded-full bg-[#f5f5f0]",
+        "glass-inset relative h-2 w-full overflow-hidden rounded-full",
         className
       )}
       {...props}

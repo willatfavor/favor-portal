@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { CommunicationPreferences } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import { isDevBypass } from '@/lib/dev-mode';
+import { getMockPreferencesForUser, updateMockPreferences } from '@/lib/mock-store';
 
 interface UsePreferencesReturn {
   preferences: CommunicationPreferences | null;
@@ -27,6 +29,12 @@ export function usePreferences(userId: string | undefined): UsePreferencesReturn
     async function fetchPreferences() {
       try {
         setIsLoading(true);
+
+        if (isDevBypass) {
+          const mockPrefs = getMockPreferencesForUser(activeUserId);
+          if (mockPrefs) setPreferences(mockPrefs);
+          return;
+        }
 
         const { data, error } = await supabase
           .from('communication_preferences')
@@ -75,6 +83,12 @@ export function usePreferences(userId: string | undefined): UsePreferencesReturn
     if (!userId || !preferences) return;
 
     try {
+      if (isDevBypass) {
+        const next = updateMockPreferences(userId, updates);
+        if (next) setPreferences(next);
+        return;
+      }
+
       const { error } = await supabase
         .from('communication_preferences')
         .update({

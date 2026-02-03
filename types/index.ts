@@ -20,6 +20,7 @@ export interface User {
   createdAt: string;
   lastLogin?: string;
   avatarUrl?: string;
+  isAdmin?: boolean;
 }
 
 export interface Gift {
@@ -156,4 +157,39 @@ export interface BlackbaudGift {
   type: 'one_time' | 'recurring';
   campaign?: string;
   appeal?: string;
+}
+
+export type ContentType = 'report' | 'update' | 'resource' | 'prayer' | 'story';
+
+export interface ContentItem {
+  id: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  type: ContentType;
+  accessLevel: 'all' | 'partner' | 'major_donor' | 'church' | 'foundation' | 'daf' | 'ambassador' | 'volunteer';
+  date: string;
+  author: string;
+  tags: string[];
+  coverImage?: string;
+  fileUrl?: string;
+}
+
+export interface PortalEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  audience: 'partner' | 'church' | 'foundation' | 'daf' | 'ambassador' | 'volunteer';
+}
+
+export interface CommunicationTemplate {
+  id: string;
+  channel: 'email' | 'sms' | 'direct_mail';
+  name: string;
+  subject?: string;
+  content: string;
+  status: 'active' | 'draft';
+  updatedAt: string;
 }

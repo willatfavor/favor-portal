@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 function LoadingState() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FFFEF9]">
+    <div className="flex min-h-screen items-center justify-center bg-transparent">
       <div className="text-center">
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-[#2b4d24]" />
         <p className="mt-4 text-[#666666]">Verifying your login...</p>
@@ -57,7 +57,7 @@ function VerifyContent() {
   }, [token, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FFFEF9]">
+    <div className="flex min-h-screen items-center justify-center bg-transparent">
       <div className="text-center">
         {status === 'verifying' && (
           <>

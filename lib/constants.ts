@@ -75,6 +75,8 @@ export const ROUTES = {
     givingHistory: '/giving/history',
     courses: '/courses',
     content: '/content',
+    assistant: '/assistant',
+    majorDonor: '/major-donor',
     profile: '/profile',
     settings: '/settings',
     foundation: '/foundation',
@@ -88,6 +90,14 @@ export const ROUTES = {
     ambassador: '/ambassador',
     ambassadorResources: '/ambassador/resources',
     ambassadorEvents: '/ambassador/events'
+  },
+  admin: {
+    root: '/admin',
+    users: '/admin/users',
+    courses: '/admin/courses',
+    content: '/admin/content',
+    communications: '/admin/communications',
+    support: '/admin/support'
   }
 } as const;
 
@@ -101,5 +111,21 @@ export const COURSE_ACCESS_LEVELS: Record<string, string[]> = {
 
 export function canAccessCourse(accessLevel: string, userType: string): boolean {
   const allowedTypes = COURSE_ACCESS_LEVELS[accessLevel];
+  return allowedTypes?.includes(userType) ?? false;
+}
+
+export const CONTENT_ACCESS_LEVELS: Record<string, string[]> = {
+  all: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador', 'volunteer'],
+  partner: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador'],
+  major_donor: ['major_donor', 'foundation'],
+  church: ['church'],
+  foundation: ['foundation'],
+  daf: ['daf'],
+  ambassador: ['ambassador'],
+  volunteer: ['volunteer']
+};
+
+export function canAccessContent(accessLevel: string, userType: string): boolean {
+  const allowedTypes = CONTENT_ACCESS_LEVELS[accessLevel];
   return allowedTypes?.includes(userType) ?? false;
 }

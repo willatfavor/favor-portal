@@ -58,7 +58,7 @@ export default function AmbassadorDashboardPage() {
 
       {/* Impact Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-[#2b4d24] to-[#3d6633] text-[#FFFEF9] border-none">
+        <Card className="glass-hero border border-white/15 bg-[#2b4d24]/90 text-[#FFFEF9]">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#FFFEF9]/70">Total Funds Raised</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#FFFEF9]">
@@ -66,7 +66,7 @@ export default function AmbassadorDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Network Size</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -74,7 +74,7 @@ export default function AmbassadorDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Events Hosted</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -82,7 +82,7 @@ export default function AmbassadorDashboardPage() {
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="bg-[#f5f5f0] border-none">
+        <Card className="glass-pane">
           <CardHeader className="pb-2">
             <CardDescription className="text-[#666666]">Referrals</CardDescription>
             <CardTitle className="font-['Cormorant_Garamond'] text-3xl text-[#2b4d24]">
@@ -93,7 +93,7 @@ export default function AmbassadorDashboardPage() {
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="bg-[#f5f5f0]">
+        <TabsList className="glass-subtle">
           <TabsTrigger 
             value="dashboard" 
             className="data-[state=active]:bg-[#2b4d24] data-[state=active]:text-white"
@@ -165,7 +165,7 @@ export default function AmbassadorDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-[#f5f5f0] rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <div className="p-2 bg-[#2b4d24]/10 rounded-full">
                       <Users className="h-4 w-4 text-[#2b4d24]" />
                     </div>
@@ -175,7 +175,7 @@ export default function AmbassadorDashboardPage() {
                     </div>
                     <span className="text-xs text-[#999999]">2h ago</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-[#f5f5f0] rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <div className="p-2 bg-[#2b4d24]/10 rounded-full">
                       <Trophy className="h-4 w-4 text-[#2b4d24]" />
                     </div>
@@ -185,7 +185,7 @@ export default function AmbassadorDashboardPage() {
                     </div>
                     <span className="text-xs text-[#999999]">1d ago</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-[#f5f5f0] rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <div className="p-2 bg-[#2b4d24]/10 rounded-full">
                       <Share2 className="h-4 w-4 text-[#2b4d24]" />
                     </div>
@@ -203,7 +203,7 @@ export default function AmbassadorDashboardPage() {
 
         <TabsContent value="tools" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -229,7 +229,7 @@ export default function AmbassadorDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -250,7 +250,7 @@ export default function AmbassadorDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -271,7 +271,7 @@ export default function AmbassadorDashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow">
+            <Card className="glass-hover">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#2b4d24]/10 rounded-lg">
@@ -296,7 +296,7 @@ export default function AmbassadorDashboardPage() {
 
         <TabsContent value="events" className="mt-6">
           <div className="space-y-4">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="glass-hover cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
@@ -334,17 +334,17 @@ export default function AmbassadorDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-[#f5f5f0] rounded-lg text-center">
+                  <div className="p-4 rounded-lg text-center glass-inset glass-transition">
                     <Users className="h-8 w-8 text-[#2b4d24] mx-auto mb-2" />
                     <p className="font-medium text-[#1a1a1a]">Dinner Party</p>
                     <p className="text-xs text-[#666666]">Intimate gathering</p>
                   </div>
-                  <div className="p-4 bg-[#f5f5f0] rounded-lg text-center">
+                  <div className="p-4 rounded-lg text-center glass-inset glass-transition">
                     <Share2 className="h-8 w-8 text-[#2b4d24] mx-auto mb-2" />
                     <p className="font-medium text-[#1a1a1a]">Online Event</p>
                     <p className="text-xs text-[#666666]">Virtual meetup</p>
                   </div>
-                  <div className="p-4 bg-[#f5f5f0] rounded-lg text-center">
+                  <div className="p-4 rounded-lg text-center glass-inset glass-transition">
                     <Trophy className="h-8 w-8 text-[#2b4d24] mx-auto mb-2" />
                     <p className="font-medium text-[#1a1a1a]">Activity Event</p>
                     <p className="text-xs text-[#666666]">Run, ride, etc.</p>
@@ -360,7 +360,7 @@ export default function AmbassadorDashboardPage() {
 
         <TabsContent value="recognition" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-gradient-to-br from-[#FFD700]/20 to-[#FFA500]/20 border-[#FFD700]/30">
+            <Card className="glass-pane border border-[#b08b3e]/30 bg-[#b08b3e]/10">
               <CardHeader>
                 <CardTitle className="font-['Cormorant_Garamond'] text-xl text-[#1a1a1a] flex items-center gap-2">
                   <Award className="h-5 w-5 text-[#FFD700]" />
@@ -369,21 +369,21 @@ export default function AmbassadorDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <Trophy className="h-8 w-8 text-[#FFD700]" />
                     <div>
                       <p className="font-medium text-[#1a1a1a]">Champion Ambassador</p>
                       <p className="text-xs text-[#666666]">Raised $10,000+ in 2024</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <Users className="h-8 w-8 text-[#C0C0C0]" />
                     <div>
                       <p className="font-medium text-[#1a1a1a]">Network Builder</p>
                       <p className="text-xs text-[#666666]">Connected 20+ supporters</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
+                  <div className="flex items-center gap-3 p-3 rounded-lg glass-inset glass-transition">
                     <Calendar className="h-8 w-8 text-[#CD7F32]" />
                     <div>
                       <p className="font-medium text-[#1a1a1a]">Event Host</p>

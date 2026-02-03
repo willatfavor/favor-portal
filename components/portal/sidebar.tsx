@@ -49,9 +49,9 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-[#e5e5e0] bg-[#FFFEF9]">
+    <div className="flex h-full w-64 flex-col border-r border-[#d9e1d2]/60 bg-transparent glass-subtle">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b border-[#e5e5e0] px-6">
+      <div className="flex h-16 items-center border-b border-[#d9e1d2]/60 px-6">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2b4d24]">
             <Heart className="h-4 w-4 text-[#FFFEF9]" />
@@ -77,7 +77,7 @@ export function Sidebar() {
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-[#2b4d24] text-[#FFFEF9]"
-                      : "text-[#666666] hover:bg-[#f5f5f0] hover:text-[#1a1a1a]"
+                      : "text-[#6f7766] hover:bg-white/60 hover:text-[#1a1a1a]"
                   )}
                 >
                   <Icon className="h-5 w-5" />
@@ -100,7 +100,7 @@ export function Sidebar() {
                               "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
                               isChildActive
                                 ? "bg-[#2b4d24]/10 text-[#2b4d24]"
-                                : "text-[#666666] hover:bg-[#f5f5f0] hover:text-[#1a1a1a]"
+                                : "text-[#6f7766] hover:bg-white/60 hover:text-[#1a1a1a]"
                             )}
                           >
                             {child.name === "History" && <History className="h-4 w-4" />}
@@ -118,11 +118,11 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[#e5e5e0] p-4">
-        <p className="text-xs text-[#666666]">
+      <div className="border-t border-[#d9e1d2]/60 p-4">
+        <p className="text-xs text-[#6f7766]">
           Favor International
         </p>
-        <p className="text-xs text-[#666666]">
+        <p className="text-xs text-[#6f7766]">
           Partner Portal v1.0
         </p>
       </div>

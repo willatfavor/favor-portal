@@ -3,17 +3,23 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { User } from '@/types';
 import { createClient } from '@/lib/supabase/client';
-
-const isSupabaseConfigured = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigured;
+import { isDevBypass } from '@/lib/dev-mode';
+import {
+  getActiveMockUserId,
+  getMockUserById,
+  initMockStore,
+  setActiveMockUserId,
+  updateMockUser,
+} from '@/lib/mock-store';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setDevUser?: (userId: string) => void;
+  updateDevUser?: (updates: Partial<User>) => void;
+  isDev?: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
+
+  function loadDevUser() {
+    initMockStore();
+    const activeId = getActiveMockUserId();
+    const activeUser = getMockUserById(activeId);
+    setUser(activeUser);
+    setIsLoading(false);
+  }
 
   async function fetchUser() {
     try {
@@ -66,16 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isDevBypass) {
-      setUser({
-        id: 'dev-user',
-        email: 'dev@favor.local',
-        firstName: 'Dev',
-        lastName: 'User',
-        constituentType: 'individual',
-        lifetimeGivingTotal: 0,
-        createdAt: new Date().toISOString(),
-      });
-      setIsLoading(false);
+      loadDevUser();
       return;
     }
 
@@ -92,7 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     if (isDevBypass) {
-      setUser(null);
+      initMockStore();
+      const fallback = getMockUserById(getActiveMockUserId());
+      setUser(fallback);
       return;
     }
 
@@ -102,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function refreshUser() {
     if (isDevBypass) {
-      setIsLoading(false);
+      loadDevUser();
       return;
     }
 
@@ -110,8 +117,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser();
   }
 
+  const setDevUser = (userId: string) => {
+    if (!isDevBypass) return;
+    setActiveMockUserId(userId);
+    const next = getMockUserById(userId);
+    setUser(next);
+  };
+
+  const updateDevUser = (updates: Partial<User>) => {
+    if (!isDevBypass || !user) return;
+    const updated = updateMockUser(user.id, updates);
+    if (updated) setUser(updated);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signOut, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        signOut,
+        refreshUser,
+        setDevUser,
+        updateDevUser,
+        isDev: isDevBypass,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

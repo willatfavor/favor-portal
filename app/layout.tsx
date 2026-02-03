@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable}`}>
-      <body className="font-sans antialiased bg-[#FFFEF9]">
+      <body className="font-sans antialiased bg-transparent">
         <AuthProvider>
           {children}
         </AuthProvider>

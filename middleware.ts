@@ -55,7 +55,8 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/foundation') ||
       pathname.startsWith('/church') ||
       pathname.startsWith('/daf') ||
-      pathname.startsWith('/ambassador')) {
+      pathname.startsWith('/ambassador') ||
+      pathname.startsWith('/admin')) {
     
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
