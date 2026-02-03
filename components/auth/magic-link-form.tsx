@@ -71,7 +71,7 @@ export function MagicLinkForm() {
           {devLink ? (
             <Button
               className="mb-3 w-full bg-[#2b4d24] hover:bg-[#1a3d14] text-white"
-              onClick={() => router.push(devLink.replace(window.location.origin, ''))}
+              onClick={() => router.push(devLink)}
             >
               Open Dev Magic Link
             </Button>

@@ -19,12 +19,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (isDevBypass) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       return NextResponse.json(
         {
           success: true,
           message: 'Dev mode: magic link generated',
-          devLink: `${baseUrl}/verify?token=dev`,
+          devLink: '/verify?token=dev',
         },
         { status: 200 }
       );
