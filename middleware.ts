@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigured;
+
 // Define public routes that don't require authentication
 const publicRoutes = [
   '/login',
@@ -14,6 +19,10 @@ const publicRoutes = [
 ];
 
 export async function middleware(request: NextRequest) {
+  if (isDevBypass) {
+    return NextResponse.next();
+  }
+
   const { pathname } = request.nextUrl;
 
   // Check if this is a public route

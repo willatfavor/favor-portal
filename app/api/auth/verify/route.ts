@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigured;
+
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
@@ -9,6 +14,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Token is required' },
         { status: 400 }
+      );
+    }
+
+    if (isDevBypass) {
+      return NextResponse.json(
+        {
+          success: true,
+          user: {
+            id: 'dev-user',
+            email: 'dev@favor.local',
+          },
+        },
+        { status: 200 }
       );
     }
 

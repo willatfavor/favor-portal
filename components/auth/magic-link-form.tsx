@@ -13,6 +13,7 @@ export function MagicLinkForm() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [devLink, setDevLink] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,6 +24,7 @@ export function MagicLinkForm() {
       return;
     }
 
+    setDevLink(null);
     setIsLoading(true);
 
     try {
@@ -32,8 +34,14 @@ export function MagicLinkForm() {
         body: JSON.stringify({ email }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
         throw new Error('Failed to send magic link');
+      }
+
+      if (data?.devLink) {
+        setDevLink(data.devLink);
       }
 
       setIsSent(true);
@@ -60,6 +68,14 @@ export function MagicLinkForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {devLink ? (
+            <Button
+              className="mb-3 w-full bg-[#2b4d24] hover:bg-[#1a3d14] text-white"
+              onClick={() => router.push(devLink.replace(window.location.origin, ''))}
+            >
+              Open Dev Magic Link
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             className="w-full border-[#2b4d24] text-[#2b4d24] hover:bg-[#2b4d24] hover:text-white"

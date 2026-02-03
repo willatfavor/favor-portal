@@ -4,6 +4,11 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigured;
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -60,6 +65,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    if (isDevBypass) {
+      setUser({
+        id: 'dev-user',
+        email: 'dev@favor.local',
+        firstName: 'Dev',
+        lastName: 'User',
+        constituentType: 'individual',
+        lifetimeGivingTotal: 0,
+        createdAt: new Date().toISOString(),
+      });
+      setIsLoading(false);
+      return;
+    }
+
     fetchUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
@@ -72,11 +91,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signOut() {
+    if (isDevBypass) {
+      setUser(null);
+      return;
+    }
+
     await supabase.auth.signOut();
     setUser(null);
   }
 
   async function refreshUser() {
+    if (isDevBypass) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     await fetchUser();
   }

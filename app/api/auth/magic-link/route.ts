@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendMagicLinkEmail } from '@/lib/resend/client';
 
+const isSupabaseConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigured;
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -10,6 +15,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Valid email is required' },
         { status: 400 }
+      );
+    }
+
+    if (isDevBypass) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Dev mode: magic link generated',
+          devLink: `${baseUrl}/verify?token=dev`,
+        },
+        { status: 200 }
       );
     }
 
