@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Course, UserCourseProgress } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import type { Tables } from '@/types/database';
@@ -17,7 +17,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
   const [progress, setProgress] = useState<UserCourseProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function fetchCourses() {

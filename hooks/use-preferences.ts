@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CommunicationPreferences } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
@@ -15,7 +15,7 @@ export function usePreferences(userId: string | undefined): UsePreferencesReturn
   const [preferences, setPreferences] = useState<CommunicationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (!userId) {
