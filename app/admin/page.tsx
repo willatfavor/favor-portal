@@ -31,7 +31,10 @@ import {
   Filter,
   ClipboardCheck,
   Sparkles,
+  Shield,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { GIVING_TIERS } from "@/lib/constants";
 
 const USER_TYPES = [
   "all",
@@ -42,6 +45,13 @@ const USER_TYPES = [
   "daf",
   "ambassador",
   "volunteer",
+];
+
+const TIER_PRESETS = [
+  { label: "Partner", value: 500 },
+  { label: "Silver", value: 1500 },
+  { label: "Gold", value: 7500 },
+  { label: "Platinum", value: 15000 },
 ];
 
 function getMonthKey(value: string) {
@@ -73,7 +83,9 @@ function describeActivity(event: ActivityEvent, user?: User | null) {
 }
 
 export default function AdminOverviewPage() {
+  const { user: activeUser, isDev, setDevUser, updateDevUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [switchUsers, setSwitchUsers] = useState<User[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [gifts, setGifts] = useState<Gift[]>([]);
@@ -84,6 +96,7 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     setUsers(getMockUsers());
+    setSwitchUsers(getMockUsers());
     setActivity(getMockActivity());
     setTickets(getSupportTickets());
     setGifts(getMockGifts());
@@ -128,6 +141,14 @@ export default function AdminOverviewPage() {
     if (userTypeFilter === "all") return users;
     return users.filter((u) => u.constituentType === userTypeFilter);
   }, [users, userTypeFilter]);
+
+  const tierKey = useMemo(() => {
+    if (!activeUser) return "Partner";
+    if (activeUser.lifetimeGivingTotal >= GIVING_TIERS.PLATINUM.min) return "Platinum";
+    if (activeUser.lifetimeGivingTotal >= GIVING_TIERS.GOLD.min) return "Gold";
+    if (activeUser.lifetimeGivingTotal >= GIVING_TIERS.SILVER.min) return "Silver";
+    return "Partner";
+  }, [activeUser]);
 
   const userIdSet = useMemo(
     () => new Set(filteredUsers.map((u) => u.id)),
@@ -213,6 +234,92 @@ export default function AdminOverviewPage() {
           Showing {filteredUsers.length} partners
         </span>
       </div>
+
+      {isDev && activeUser && (
+        <Card className="glass-pane">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold text-[#1a1a1a]">
+              <Shield className="h-4 w-4 text-[#2b4d24]" /> QA Role Switcher
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl glass-inset p-4">
+              <p className="text-xs text-[#999999]">Active User</p>
+              <p className="text-sm font-medium text-[#1a1a1a]">
+                {activeUser.firstName} {activeUser.lastName}
+              </p>
+              <p className="text-xs text-[#8b957b]">{tierKey}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-[#8b957b]">Switch User</p>
+                <Select
+                  value={activeUser.id}
+                  onValueChange={(value) => {
+                    setDevUser?.(value);
+                    setSwitchUsers(getMockUsers());
+                    setUsers(getMockUsers());
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {switchUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.firstName} {u.lastName} ({u.constituentType.replace("_", " ")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-[#8b957b]">Constituent Type</p>
+                <Select
+                  value={activeUser.constituentType}
+                  onValueChange={(value) => {
+                    updateDevUser?.({ constituentType: value as User["constituentType"] });
+                    setUsers(getMockUsers());
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USER_TYPES.filter((type) => type !== "all").map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type.replace("_", " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-[#8b957b]">Giving Tier</p>
+                <Select
+                  value={tierKey}
+                  onValueChange={(value) => {
+                    const match = TIER_PRESETS.find((t) => t.label === value);
+                    updateDevUser?.({ lifetimeGivingTotal: match?.value ?? 0 });
+                    setUsers(getMockUsers());
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIER_PRESETS.map((tier) => (
+                      <SelectItem key={tier.label} value={tier.label}>
+                        {tier.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-5">
         {[
