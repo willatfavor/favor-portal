@@ -3,6 +3,9 @@
 
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const STREAM_SUBDOMAIN =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN ||
+  process.env.CLOUDFLARE_STREAM_SUBDOMAIN;
 
 export interface VideoUploadResponse {
   uid: string;
@@ -64,9 +67,11 @@ export async function getVideoDetails(videoId: string) {
 }
 
 export function getStreamUrl(videoId: string): string {
-  return `https://customer-${process.env.CLOUDFLARE_STREAM_SUBDOMAIN}.cloudflarestream.com/${videoId}/iframe`;
+  if (!STREAM_SUBDOMAIN) return '';
+  return `https://customer-${STREAM_SUBDOMAIN}.cloudflarestream.com/${videoId}/iframe`;
 }
 
 export function getThumbnailUrl(videoId: string): string {
-  return `https://customer-${process.env.CLOUDFLARE_STREAM_SUBDOMAIN}.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg`;
+  if (!STREAM_SUBDOMAIN) return '';
+  return `https://customer-${STREAM_SUBDOMAIN}.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg`;
 }

@@ -21,6 +21,7 @@ export interface Database {
           lifetime_giving_total: number;
           rdd_assignment: string | null;
           avatar_url: string | null;
+          is_admin: boolean;
           created_at: string;
           last_login: string | null;
         };
@@ -35,6 +36,7 @@ export interface Database {
           lifetime_giving_total?: number;
           rdd_assignment?: string | null;
           avatar_url?: string | null;
+          is_admin?: boolean;
           created_at?: string;
           last_login?: string | null;
         };
@@ -49,6 +51,7 @@ export interface Database {
           lifetime_giving_total?: number;
           rdd_assignment?: string | null;
           avatar_url?: string | null;
+          is_admin?: boolean;
           created_at?: string;
           last_login?: string | null;
         };
@@ -203,6 +206,14 @@ export interface Database {
           thumbnail_url: string | null;
           access_level: string;
           sort_order: number;
+          status: string;
+          is_locked: boolean;
+          is_paid: boolean;
+          price: number;
+          tags: string[];
+          cover_image: string | null;
+          enforce_sequential: boolean;
+          updated_at: string;
           created_at: string;
         };
         Insert: {
@@ -212,6 +223,14 @@ export interface Database {
           thumbnail_url?: string | null;
           access_level?: string;
           sort_order?: number;
+          status?: string;
+          is_locked?: boolean;
+          is_paid?: boolean;
+          price?: number;
+          tags?: string[];
+          cover_image?: string | null;
+          enforce_sequential?: boolean;
+          updated_at?: string;
           created_at?: string;
         };
         Update: {
@@ -221,6 +240,14 @@ export interface Database {
           thumbnail_url?: string | null;
           access_level?: string;
           sort_order?: number;
+          status?: string;
+          is_locked?: boolean;
+          is_paid?: boolean;
+          price?: number;
+          tags?: string[];
+          cover_image?: string | null;
+          enforce_sequential?: boolean;
+          updated_at?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -234,6 +261,12 @@ export interface Database {
           cloudflare_video_id: string;
           sort_order: number;
           duration_seconds: number;
+          module_type: string;
+          resource_url: string | null;
+          notes: string | null;
+          quiz_payload: Json | null;
+          pass_threshold: number;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -243,6 +276,12 @@ export interface Database {
           cloudflare_video_id: string;
           sort_order?: number;
           duration_seconds?: number;
+          module_type?: string;
+          resource_url?: string | null;
+          notes?: string | null;
+          quiz_payload?: Json | null;
+          pass_threshold?: number;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -252,6 +291,12 @@ export interface Database {
           cloudflare_video_id?: string;
           sort_order?: number;
           duration_seconds?: number;
+          module_type?: string;
+          resource_url?: string | null;
+          notes?: string | null;
+          quiz_payload?: Json | null;
+          pass_threshold?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -282,6 +327,63 @@ export interface Database {
           completed_at?: string | null;
           watch_time_seconds?: number;
           last_watched_at?: string | null;
+        };
+        Relationships: [];
+      };
+      user_course_notes: {
+        Row: {
+          id: string;
+          user_id: string;
+          module_id: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          module_id: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          module_id?: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_course_certificates: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          completion_rate: number;
+          issued_at: string;
+          certificate_url: string | null;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          completion_rate?: number;
+          issued_at?: string;
+          certificate_url?: string | null;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          completion_rate?: number;
+          issued_at?: string;
+          certificate_url?: string | null;
+          metadata?: Json;
         };
         Relationships: [];
       };

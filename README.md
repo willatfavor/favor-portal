@@ -10,6 +10,7 @@ Partner portal (LMS, user accounts, giving history, admin surfaces) built with N
 ## SKY Developer Handoff
 Start with:
 - `docs/SKY_INTEGRATION_HANDOFF.md`
+- `docs/LMS_PRODUCTION_HANDOFF.md`
 
 This document contains:
 - required environment variables
@@ -24,6 +25,11 @@ npm run dev
 ```
 
 App runs on `http://localhost:3000`.
+
+## Database Migrations
+Before production deploy, apply:
+- `database/migrations/001_initial_schema.sql`
+- `database/migrations/002_lms_production_upgrade.sql`
 
 ## Scripts
 ```bash

@@ -43,7 +43,9 @@ export default function DashboardPage() {
   const userType = (user?.constituentType ?? "individual") as ConstituentType;
 
   const accessibleCourses = courses.filter((course) =>
-    canAccessCourse(course.accessLevel, userType)
+    canAccessCourse(course.accessLevel, userType) &&
+    course.status !== "draft" &&
+    !course.isLocked
   );
   const accessibleCourseIds = new Set(accessibleCourses.map((course) => course.id));
   const accessibleModules = modules.filter((module) => accessibleCourseIds.has(module.courseId));

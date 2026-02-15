@@ -92,6 +92,7 @@ export interface Course {
   price?: number;
   tags?: string[];
   coverImage?: string;
+  enforceSequential?: boolean;
 }
 
 export interface CourseModule {
@@ -105,6 +106,8 @@ export interface CourseModule {
   type?: 'video' | 'reading' | 'quiz';
   resourceUrl?: string;
   notes?: string;
+  quizPayload?: Record<string, unknown>;
+  passThreshold?: number;
 }
 
 export interface UserCourseProgress {

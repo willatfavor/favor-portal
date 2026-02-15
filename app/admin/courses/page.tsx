@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Course, CourseModule } from "@/types";
 import { getMockCourses, getMockModules, setMockCourses, setMockModules } from "@/lib/mock-store";
+import { createClient } from "@/lib/supabase/client";
+import { isDevBypass } from "@/lib/dev-mode";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { GraduationCap, PlusCircle, Pencil, Film, FileText } from "lucide-react";
+import type { Tables } from "@/types/database";
 
 const ACCESS_LEVELS: Course["accessLevel"][] = [
   "partner",
@@ -36,7 +39,48 @@ const ACCESS_LEVELS: Course["accessLevel"][] = [
 const STATUS: Array<NonNullable<Course["status"]>> = ["draft", "published"];
 const MODULE_TYPES: NonNullable<CourseModule["type"]>[] = ["video", "reading", "quiz"];
 
+function mapCourse(row: Tables<"courses">): Course {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    thumbnailUrl: row.thumbnail_url || row.cover_image || undefined,
+    accessLevel: row.access_level as Course["accessLevel"],
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    moduleCount: 0,
+    status: (row.status as Course["status"]) ?? "published",
+    isLocked: Boolean(row.is_locked),
+    isPaid: Boolean(row.is_paid),
+    price: Number(row.price ?? 0),
+    tags: row.tags ?? [],
+    coverImage: row.cover_image ?? "",
+    enforceSequential: row.enforce_sequential ?? true,
+  };
+}
+
+function mapModule(row: Tables<"course_modules">): CourseModule {
+  return {
+    id: row.id,
+    courseId: row.course_id,
+    title: row.title,
+    description: row.description ?? "",
+    cloudflareVideoId: row.cloudflare_video_id,
+    sortOrder: row.sort_order,
+    durationSeconds: row.duration_seconds,
+    type: (row.module_type as CourseModule["type"]) ?? "video",
+    resourceUrl: row.resource_url ?? "",
+    notes: row.notes ?? "",
+    passThreshold: row.pass_threshold ?? 70,
+    quizPayload:
+      row.quiz_payload && typeof row.quiz_payload === "object"
+        ? (row.quiz_payload as Record<string, unknown>)
+        : undefined,
+  };
+}
+
 export default function AdminCoursesPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [courses, setCourses] = useState<Course[]>([]);
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -50,15 +94,44 @@ export default function AdminCoursesPage() {
     price: 0,
     tags: [],
     coverImage: "",
+    enforceSequential: true,
   });
   const [moduleDraft, setModuleDraft] = useState<Record<string, Partial<CourseModule>>>({});
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setErrorMessage(null);
+    if (isDevBypass) {
+      setCourses(getMockCourses());
+      setModules(getMockModules());
+      return;
+    }
+
+    const [coursesResult, modulesResult] = await Promise.all([
+      supabase.from("courses").select("*").order("sort_order", { ascending: true }),
+      supabase.from("course_modules").select("*").order("sort_order", { ascending: true }),
+    ]);
+
+    if (coursesResult.error) {
+      setErrorMessage(coursesResult.error.message);
+      return;
+    }
+
+    if (modulesResult.error) {
+      setErrorMessage(modulesResult.error.message);
+      return;
+    }
+
+    setCourses((coursesResult.data ?? []).map(mapCourse));
+    setModules((modulesResult.data ?? []).map(mapModule));
+  }, [supabase]);
 
   useEffect(() => {
-    setCourses(getMockCourses());
-    setModules(getMockModules());
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const modulesByCourse = useMemo(() => {
     return modules.reduce<Record<string, CourseModule[]>>((acc, module) => {
@@ -68,26 +141,56 @@ export default function AdminCoursesPage() {
     }, {});
   }, [modules]);
 
-  function saveCourse() {
-    if (!newCourse.title || !newCourse.description) return;
-    const course: Course = {
-      id: `course-${Date.now()}`,
-      title: newCourse.title,
-      description: newCourse.description,
-      accessLevel: newCourse.accessLevel ?? "partner",
-      sortOrder: courses.length + 1,
-      createdAt: new Date().toISOString(),
-      moduleCount: 0,
-      status: newCourse.status ?? "draft",
-      isLocked: newCourse.isLocked ?? false,
-      isPaid: newCourse.isPaid ?? false,
-      price: newCourse.isPaid ? newCourse.price ?? 0 : 0,
-      tags: newCourse.tags ?? [],
-      coverImage: newCourse.coverImage ?? "",
-    };
-    const next = [course, ...courses];
-    setCourses(next);
-    setMockCourses(next);
+  async function saveCourse() {
+    if (!newCourse.title || !newCourse.description) return false;
+
+    setIsSaving(true);
+    setErrorMessage(null);
+
+    if (isDevBypass) {
+      const course: Course = {
+        id: `course-${Date.now()}`,
+        title: newCourse.title,
+        description: newCourse.description,
+        accessLevel: newCourse.accessLevel ?? "partner",
+        sortOrder: courses.length + 1,
+        createdAt: new Date().toISOString(),
+        moduleCount: 0,
+        status: newCourse.status ?? "draft",
+        isLocked: newCourse.isLocked ?? false,
+        isPaid: newCourse.isPaid ?? false,
+        price: newCourse.isPaid ? newCourse.price ?? 0 : 0,
+        tags: newCourse.tags ?? [],
+        coverImage: newCourse.coverImage ?? "",
+        enforceSequential: newCourse.enforceSequential ?? true,
+      };
+      const next = [course, ...courses];
+      setCourses(next);
+      setMockCourses(next);
+    } else {
+      const { error } = await supabase.from("courses").insert({
+        title: newCourse.title,
+        description: newCourse.description,
+        access_level: newCourse.accessLevel ?? "partner",
+        sort_order: courses.length + 1,
+        status: newCourse.status ?? "draft",
+        is_locked: newCourse.isLocked ?? false,
+        is_paid: newCourse.isPaid ?? false,
+        price: newCourse.isPaid ? newCourse.price ?? 0 : 0,
+        tags: newCourse.tags ?? [],
+        cover_image: newCourse.coverImage || null,
+        thumbnail_url: newCourse.coverImage || null,
+        enforce_sequential: newCourse.enforceSequential ?? true,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsSaving(false);
+        return false;
+      }
+      await loadData();
+    }
+
     setNewCourse({
       title: "",
       description: "",
@@ -98,52 +201,164 @@ export default function AdminCoursesPage() {
       price: 0,
       tags: [],
       coverImage: "",
+      enforceSequential: true,
     });
+    setIsSaving(false);
+    return true;
   }
 
-  function updateCourse() {
+  async function updateCourse() {
     if (!editingCourse) return;
-    const next = courses.map((course) =>
-      course.id === editingCourse.id ? editingCourse : course
-    );
-    setCourses(next);
-    setMockCourses(next);
+
+    setIsSaving(true);
+    setErrorMessage(null);
+
+    if (isDevBypass) {
+      const next = courses.map((course) =>
+        course.id === editingCourse.id ? editingCourse : course
+      );
+      setCourses(next);
+      setMockCourses(next);
+      setEditingCourse(null);
+      setIsSaving(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("courses")
+      .update({
+        title: editingCourse.title,
+        description: editingCourse.description,
+        access_level: editingCourse.accessLevel,
+        status: editingCourse.status ?? "draft",
+        is_locked: editingCourse.isLocked ?? false,
+        is_paid: editingCourse.isPaid ?? false,
+        price: editingCourse.isPaid ? editingCourse.price ?? 0 : 0,
+        tags: editingCourse.tags ?? [],
+        cover_image: editingCourse.coverImage || null,
+        thumbnail_url: editingCourse.coverImage || null,
+        enforce_sequential: editingCourse.enforceSequential ?? true,
+      })
+      .eq("id", editingCourse.id);
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsSaving(false);
+      return;
+    }
+
     setEditingCourse(null);
+    await loadData();
+    setIsSaving(false);
   }
 
-  function addModule(courseId: string) {
+  async function addModule(courseId: string) {
     const draft = moduleDraft[courseId];
     if (!draft?.title) return;
+
+    setIsSaving(true);
+    setErrorMessage(null);
+
     const existing = modulesByCourse[courseId] || [];
-    const newModule: CourseModule = {
-      id: `${courseId}-module-${Date.now()}`,
-      courseId,
-      title: draft.title,
-      description: draft.description || "",
-      cloudflareVideoId: draft.cloudflareVideoId || "demo",
-      sortOrder: existing.length + 1,
-      durationSeconds: draft.durationSeconds || 600,
-      type: draft.type ?? "video",
-      resourceUrl: draft.resourceUrl,
-      notes: draft.notes,
-    };
-    const next = [newModule, ...modules];
-    setModules(next);
-    setMockModules(next);
+    const moduleType = draft.type ?? "video";
+    const cloudflareVideoId =
+      draft.cloudflareVideoId ||
+      (moduleType === "video" ? draft.resourceUrl || "demo" : "demo");
+
+    if (isDevBypass) {
+      const newModule: CourseModule = {
+        id: `${courseId}-module-${Date.now()}`,
+        courseId,
+        title: draft.title,
+        description: draft.description || "",
+        cloudflareVideoId,
+        sortOrder: existing.length + 1,
+        durationSeconds: draft.durationSeconds || 600,
+        type: moduleType,
+        resourceUrl: draft.resourceUrl,
+        notes: draft.notes,
+        passThreshold: draft.passThreshold ?? 70,
+      };
+      const next = [newModule, ...modules];
+      setModules(next);
+      setMockModules(next);
+    } else {
+      const { error } = await supabase.from("course_modules").insert({
+        course_id: courseId,
+        title: draft.title,
+        description: draft.description || null,
+        cloudflare_video_id: cloudflareVideoId,
+        sort_order: existing.length + 1,
+        duration_seconds: draft.durationSeconds || 600,
+        module_type: moduleType,
+        resource_url: draft.resourceUrl || null,
+        notes: draft.notes || null,
+        pass_threshold: draft.passThreshold ?? 70,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsSaving(false);
+        return;
+      }
+      await loadData();
+    }
+
     setModuleDraft({
       ...moduleDraft,
-      [courseId]: { title: "", description: "", durationSeconds: 600, type: "video" },
+      [courseId]: {
+        title: "",
+        description: "",
+        durationSeconds: 600,
+        type: "video",
+        resourceUrl: "",
+        cloudflareVideoId: "",
+        passThreshold: 70,
+      },
     });
+    setIsSaving(false);
   }
 
-  function updateModule() {
+  async function updateModule() {
     if (!editingModule) return;
-    const next = modules.map((module) =>
-      module.id === editingModule.id ? editingModule : module
-    );
-    setModules(next);
-    setMockModules(next);
+
+    setIsSaving(true);
+    setErrorMessage(null);
+
+    if (isDevBypass) {
+      const next = modules.map((module) =>
+        module.id === editingModule.id ? editingModule : module
+      );
+      setModules(next);
+      setMockModules(next);
+      setEditingModule(null);
+      setIsSaving(false);
+        return;
+    }
+
+    const { error } = await supabase
+      .from("course_modules")
+      .update({
+        title: editingModule.title,
+        description: editingModule.description || null,
+        cloudflare_video_id: editingModule.cloudflareVideoId || "demo",
+        duration_seconds: editingModule.durationSeconds,
+        module_type: editingModule.type ?? "video",
+        resource_url: editingModule.resourceUrl || null,
+        notes: editingModule.notes || null,
+        pass_threshold: editingModule.passThreshold ?? 70,
+      })
+      .eq("id", editingModule.id);
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsSaving(false);
+        return;
+    }
+
     setEditingModule(null);
+    await loadData();
+    setIsSaving(false);
   }
 
   return (
@@ -255,6 +470,15 @@ export default function AdminCoursesPage() {
                   />
                   <span className="text-sm text-[#666666]">Paid course</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={newCourse.enforceSequential ?? true}
+                    onCheckedChange={(checked) =>
+                      setNewCourse({ ...newCourse, enforceSequential: checked })
+                    }
+                  />
+                  <span className="text-sm text-[#666666]">Sequential unlock</span>
+                </div>
                 {newCourse.isPaid && (
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-[#999999]">Price</Label>
@@ -269,17 +493,24 @@ export default function AdminCoursesPage() {
               </div>
               <Button
                 className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
-                onClick={() => {
-                  saveCourse();
-                  setCreateOpen(false);
+                disabled={isSaving}
+                onClick={async () => {
+                  const ok = await saveCourse();
+                  if (ok) setCreateOpen(false);
                 }}
               >
-                Save Course
+                {isSaving ? "Saving..." : "Save Course"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {errorMessage && (
+        <div className="rounded-xl border border-[#a36d4c]/30 bg-[#a36d4c]/10 px-4 py-3 text-sm text-[#7a5038]">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="grid gap-6">
         {courses.map((course) => {
@@ -407,13 +638,49 @@ export default function AdminCoursesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Video/Asset URL</Label>
+                    <Label>Resource URL</Label>
                     <Input
                       value={moduleDraft[course.id]?.resourceUrl ?? ""}
                       onChange={(e) =>
                         setModuleDraft({
                           ...moduleDraft,
                           [course.id]: { ...moduleDraft[course.id], resourceUrl: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Cloudflare Stream ID</Label>
+                    <Input
+                      placeholder="For video modules"
+                      value={moduleDraft[course.id]?.cloudflareVideoId ?? ""}
+                      onChange={(e) =>
+                        setModuleDraft({
+                          ...moduleDraft,
+                          [course.id]: {
+                            ...moduleDraft[course.id],
+                            cloudflareVideoId: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quiz Pass %</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={moduleDraft[course.id]?.passThreshold ?? 70}
+                      onChange={(e) =>
+                        setModuleDraft({
+                          ...moduleDraft,
+                          [course.id]: {
+                            ...moduleDraft[course.id],
+                            passThreshold: Number(e.target.value),
+                          },
                         })
                       }
                     />
@@ -431,8 +698,8 @@ export default function AdminCoursesPage() {
                     }
                   />
                 </div>
-                <Button variant="outline" onClick={() => addModule(course.id)}>
-                  Add Module
+                <Button variant="outline" disabled={isSaving} onClick={() => void addModule(course.id)}>
+                  {isSaving ? "Saving..." : "Add Module"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -544,6 +811,15 @@ export default function AdminCoursesPage() {
                   />
                   <span className="text-sm text-[#666666]">Paid course</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editingCourse.enforceSequential ?? true}
+                    onCheckedChange={(checked) =>
+                      setEditingCourse({ ...editingCourse, enforceSequential: checked })
+                    }
+                  />
+                  <span className="text-sm text-[#666666]">Sequential unlock</span>
+                </div>
                 {editingCourse.isPaid && (
                   <div className="flex items-center gap-2">
                     <Label className="text-xs text-[#999999]">Price</Label>
@@ -556,8 +832,12 @@ export default function AdminCoursesPage() {
                   </div>
                 )}
               </div>
-              <Button className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]" onClick={updateCourse}>
-                Save Changes
+              <Button
+                className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
+                disabled={isSaving}
+                onClick={() => void updateCourse()}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           )}
@@ -618,13 +898,36 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Video / Asset URL</Label>
+                <Label>Resource URL</Label>
                 <Input
                   value={editingModule.resourceUrl ?? ""}
                   onChange={(e) =>
                     setEditingModule({ ...editingModule, resourceUrl: e.target.value })
                   }
                 />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Cloudflare Stream ID</Label>
+                  <Input
+                    value={editingModule.cloudflareVideoId ?? ""}
+                    onChange={(e) =>
+                      setEditingModule({ ...editingModule, cloudflareVideoId: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Quiz Pass %</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={editingModule.passThreshold ?? 70}
+                    onChange={(e) =>
+                      setEditingModule({ ...editingModule, passThreshold: Number(e.target.value) })
+                    }
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Module Notes</Label>
@@ -641,8 +944,12 @@ export default function AdminCoursesPage() {
               <div className="flex items-center gap-2 text-xs text-[#999999]">
                 <FileText className="h-3.5 w-3.5" /> Reading modules can link PDFs or docs.
               </div>
-              <Button className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]" onClick={updateModule}>
-                Save Module
+              <Button
+                className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
+                disabled={isSaving}
+                onClick={() => void updateModule()}
+              >
+                {isSaving ? "Saving..." : "Save Module"}
               </Button>
             </div>
           )}

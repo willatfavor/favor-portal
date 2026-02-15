@@ -45,22 +45,27 @@ export default function CoursesPage() {
       course.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const progressMap = new Map(progress.map((entry) => [entry.moduleId, entry]));
+
   const courseProgressSummary = (courseId: string) => {
-    const courseModules = modules.filter((m) => m.courseId === courseId);
-    const courseProgress = progress.filter((p) =>
-      courseModules.some((m) => m.id === p.moduleId)
-    );
-    return { courseModules, courseProgress };
+    const courseModules = modules
+      .filter((module) => module.courseId === courseId)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const totalCount = courseModules.length;
+    const completedCount = courseModules.filter(
+      (module) => progressMap.get(module.id)?.completed
+    ).length;
+    return { courseModules, totalCount, completedCount };
   };
 
   const completedCourses = accessibleCourses.filter((course) => {
-    const { courseModules, courseProgress } = courseProgressSummary(course.id);
-    return courseModules.length > 0 && courseProgress.length > 0 && courseProgress.every((p) => p.completed);
+    const { totalCount, completedCount } = courseProgressSummary(course.id);
+    return totalCount > 0 && completedCount === totalCount;
   }).length;
 
   const inProgressCourses = accessibleCourses.filter((course) => {
-    const { courseModules, courseProgress } = courseProgressSummary(course.id);
-    return courseModules.length > 0 && courseProgress.some((p) => p.completed) && !courseProgress.every((p) => p.completed);
+    const { totalCount, completedCount } = courseProgressSummary(course.id);
+    return totalCount > 0 && completedCount > 0 && completedCount < totalCount;
   }).length;
 
   return (
@@ -127,15 +132,13 @@ export default function CoursesPage() {
           {filteredCourses.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredCourses.map((course) => {
-                const { courseModules, courseProgress } = courseProgressSummary(course.id);
-                const completedCount = courseProgress.filter((p) => p.completed).length;
-                const totalCount = courseModules.length || courseProgress.length || 0;
+                const { completedCount, totalCount } = courseProgressSummary(course.id);
                 return (
                   <CourseCard
                     key={course.id}
                     course={course}
                     progress={completedCount}
-                    totalModules={totalCount || 0}
+                    totalModules={totalCount}
                   />
                 );
               })}

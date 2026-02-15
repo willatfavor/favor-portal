@@ -19,3 +19,5 @@ These are also enforced in CI via `.github/workflows/ci.yml`.
 ## SKY PRs
 - Use the SKY checklist in `.github/PULL_REQUEST_TEMPLATE.md`.
 - Link to `docs/SKY_INTEGRATION_HANDOFF.md` in the PR description.
+- If touching LMS routes/components, include a short note on module unlock logic and progress-write behavior.
+- If touching LMS schema/contracts, link `docs/LMS_PRODUCTION_HANDOFF.md` and call out migration impacts explicitly.

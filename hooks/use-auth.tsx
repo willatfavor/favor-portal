@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lifetimeGivingTotal: Number(userData.lifetime_giving_total),
             rddAssignment: userData.rdd_assignment || undefined,
             avatarUrl: userData.avatar_url || undefined,
+            isAdmin: userData.is_admin,
             createdAt: userData.created_at,
             lastLogin: userData.last_login || undefined,
           });

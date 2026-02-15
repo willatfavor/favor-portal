@@ -215,6 +215,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'published',
     isLocked: false,
     isPaid: false,
+    enforceSequential: true,
   },
   {
     id: 'course-vision',
@@ -228,6 +229,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'published',
     isLocked: false,
     isPaid: false,
+    enforceSequential: true,
   },
   {
     id: 'course-us',
@@ -241,6 +243,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'published',
     isLocked: false,
     isPaid: false,
+    enforceSequential: true,
   },
   {
     id: 'course-foundation',
@@ -254,6 +257,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'published',
     isLocked: true,
     isPaid: false,
+    enforceSequential: true,
   },
   {
     id: 'course-ambassador',
@@ -267,6 +271,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'published',
     isLocked: true,
     isPaid: false,
+    enforceSequential: true,
   },
   {
     id: 'course-major',
@@ -280,6 +285,7 @@ export const MOCK_COURSES: Course[] = [
     status: 'draft',
     isLocked: true,
     isPaid: false,
+    enforceSequential: true,
   },
 ];
 

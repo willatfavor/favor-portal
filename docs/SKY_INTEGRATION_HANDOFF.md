@@ -7,6 +7,7 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - This repository is prepared for SKY integration PRs.
 - SKY implementation is intentionally deferred to the integration developer.
 - Stripe is not used in this project.
+- LMS production schema/readiness changes are documented in `docs/LMS_PRODUCTION_HANDOFF.md`.
 
 ## Current State (Important)
 - Blackbaud client is currently mock-backed: `lib/blackbaud/client.ts`
@@ -29,6 +30,11 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - `BLACKBAUD_API_URL`
 - `BLACKBAUD_API_KEY` (or replacement if SKY auth strategy differs)
 - Any SKY OAuth/client credentials required by your final auth flow
+- `NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN` (required for LMS video embed UX)
+
+## Required Migrations Before SKY Work
+- `database/migrations/001_initial_schema.sql`
+- `database/migrations/002_lms_production_upgrade.sql`
 
 ## SKY Developer PR Sequence
 1. Define identity mapping between Supabase auth user and SKY constituent.
@@ -49,6 +55,18 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 ### Courses API
 - Route: `GET /api/courses`
 - Must continue returning partner-appropriate course access and progress.
+
+## LMS Readiness Notes (for SKY PRs)
+- LMS progress writes now assume one row per `user_id + module_id` and depend on conflict-safe upserts.
+- Course detail UX now enforces sequential module unlock (module N+1 unlocks after module N is complete).
+- Course completion can export a local completion summary text file from the client.
+- Notes currently persist only in dev bypass mode (`isDevBypass`) and are not server-backed.
+
+### LMS Follow-Ups for Integration Developer
+1. Add/align course metadata columns needed by UI in Supabase (for example: status, lock state, module type/resource fields) and update generated types.
+2. Add a persistent notes store (table + API/queries) so note saving works in non-dev environments.
+3. Wire real video watch telemetry (Cloudflare Stream events or player callbacks) into `watch_time_seconds` updates.
+4. Decide final completion artifact strategy (text summary vs generated certificate) and implement server-backed output if required.
 
 ## Known Risks to Address in SKY PRs
 1. User identity assumptions between Supabase auth IDs and `users` table IDs.

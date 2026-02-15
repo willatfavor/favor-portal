@@ -67,6 +67,18 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    if (pathname.startsWith('/admin')) {
+      const { data: userRow, error: userError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (userError || !userRow?.is_admin) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    }
   }
 
   return NextResponse.next();

@@ -13,10 +13,14 @@ function createDisabledClient(): SupabaseClient<Database> {
     select: () => builder,
     order: () => builder,
     eq: () => builder,
+    in: () => builder,
+    maybeSingle: () => builder,
     single: () => builder,
     update: () => builder,
     insert: () => builder,
+    upsert: () => builder,
     delete: () => builder,
+    limit: () => builder,
     then: (onFulfilled?: (value: typeof emptyResult) => unknown, onRejected?: (reason: unknown) => unknown) =>
       resolved.then(onFulfilled, onRejected),
   };
