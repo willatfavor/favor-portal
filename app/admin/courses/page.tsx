@@ -115,7 +115,7 @@ export default function AdminCoursesPage() {
     const draft = moduleDraft[courseId];
     if (!draft?.title) return;
     const existing = modulesByCourse[courseId] || [];
-    const module: CourseModule = {
+    const newModule: CourseModule = {
       id: `${courseId}-module-${Date.now()}`,
       courseId,
       title: draft.title,
@@ -127,7 +127,7 @@ export default function AdminCoursesPage() {
       resourceUrl: draft.resourceUrl,
       notes: draft.notes,
     };
-    const next = [module, ...modules];
+    const next = [newModule, ...modules];
     setModules(next);
     setMockModules(next);
     setModuleDraft({

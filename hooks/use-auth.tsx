@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
-import { User } from '@/types';
+import { User, ConstituentType } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { isDevBypass } from '@/lib/dev-mode';
 import {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastName: userData.last_name,
             phone: userData.phone || undefined,
             blackbaudConstituentId: userData.blackbaud_constituent_id || undefined,
-            constituentType: userData.constituent_type as any,
+            constituentType: userData.constituent_type as ConstituentType,
             lifetimeGivingTotal: Number(userData.lifetime_giving_total),
             rddAssignment: userData.rdd_assignment || undefined,
             avatarUrl: userData.avatar_url || undefined,

@@ -85,10 +85,10 @@ export function useGiving(userId: string | undefined, refreshKey?: number): UseG
           id: r.id,
           userId: r.user_id,
           amount: Number(r.amount),
-          frequency: r.frequency as any,
+          frequency: r.frequency as RecurringGift["frequency"],
           nextChargeDate: r.next_charge_date,
           stripeSubscriptionId: r.stripe_subscription_id,
-          status: r.status as any,
+          status: r.status as RecurringGift["status"],
           createdAt: r.created_at,
         })) || []);
 

@@ -18,7 +18,7 @@ const publicRoutes = [
   '/favicon.ico',
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (isDevBypass) {
     return NextResponse.next();
   }

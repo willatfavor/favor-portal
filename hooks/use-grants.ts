@@ -52,7 +52,7 @@ export function useGrants(userId: string | undefined): UseGrantsReturn {
           amount: Number(g.amount),
           startDate: g.start_date,
           endDate: g.end_date || undefined,
-          status: g.status as any,
+          status: g.status as FoundationGrant["status"],
           nextReportDue: g.next_report_due || undefined,
           notes: g.notes || undefined,
           createdAt: g.created_at,

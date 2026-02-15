@@ -57,7 +57,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
           title: c.title,
           description: c.description,
           thumbnailUrl: c.thumbnail_url || undefined,
-          accessLevel: c.access_level as any,
+          accessLevel: c.access_level as Course["accessLevel"],
           sortOrder: c.sort_order,
           createdAt: c.created_at,
         })) || []);
@@ -122,7 +122,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
         lastWatchedAt: new Date().toISOString(),
       };
       upsertMockProgress(entry);
-      const module = getMockModules().find((m) => m.id === moduleId);
+      const targetModule = getMockModules().find((m) => m.id === moduleId);
       recordActivity({
         id: `activity-${Date.now()}`,
         type: updates.completed ? 'course_completed' : 'course_progress',
@@ -130,7 +130,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
         createdAt: new Date().toISOString(),
         metadata: {
           moduleId,
-          courseId: module?.courseId ?? '',
+          courseId: targetModule?.courseId ?? '',
           completed: updates.completed ?? false,
         },
       });

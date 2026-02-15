@@ -95,7 +95,7 @@ export default function ChurchPortalPage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-serif text-lg text-[#1a1a1a] mb-1">Small Group Studies</h3>
-                    <p className="text-sm text-gray-600 mb-3">4-week curriculum on global missions and Favor's work</p>
+                    <p className="text-sm text-gray-600 mb-3">4-week curriculum on global missions and Favor&apos;s work</p>
                     <Button variant="outline" size="sm">Access Studies</Button>
                   </div>
                 </div>
