@@ -20,11 +20,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useGiving } from '@/hooks/use-giving';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 
 export default function AmbassadorDashboardPage() {
   const { user } = useAuth();
-  const { gifts, isLoading, totalGiven } = useGiving(user?.id);
+  const { totalGiven } = useGiving(user?.id);
 
   if (!user || user.constituentType !== 'ambassador') {
     return (

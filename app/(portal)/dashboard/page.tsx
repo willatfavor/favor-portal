@@ -6,6 +6,7 @@ import { useGiving } from "@/hooks/use-giving";
 import { useCourses } from "@/hooks/use-courses";
 import { useContent } from "@/hooks/use-content";
 import { useGrants } from "@/hooks/use-grants";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -723,10 +724,13 @@ export default function DashboardPage() {
                     <Card className="overflow-hidden glass-pane glass-transition glass-hover border-0">
                       <div className="relative aspect-[16/9] bg-gradient-to-br from-[#2b4d24]/15 to-[#8b957b]/10">
                         {course.thumbnailUrl ? (
-                          <img
+                          <Image
                             src={course.thumbnailUrl}
                             alt={course.title}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-cover"
+                            unoptimized
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center">

@@ -2,6 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isDevBypass } from '@/lib/dev-mode';
 import { getMockGifts, getMockUserById } from '@/lib/mock-store';
+import type { ConstituentType, Gift, User } from '@/types';
+
+type ReceiptGift = Pick<
+  Gift,
+  'id' | 'userId' | 'amount' | 'designation' | 'isRecurring' | 'receiptSent' | 'blackbaudGiftId'
+> & {
+  date: string;
+};
+
+type ReceiptDonor = Pick<
+  User,
+  'id' | 'email' | 'firstName' | 'lastName' | 'constituentType' | 'lifetimeGivingTotal'
+> & {
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+};
+
+const VALID_CONSTITUENT_TYPES: ConstituentType[] = [
+  'individual',
+  'major_donor',
+  'church',
+  'foundation',
+  'daf',
+  'ambassador',
+  'volunteer',
+];
+
+function normalizeConstituentType(value: string): ConstituentType {
+  return VALID_CONSTITUENT_TYPES.includes(value as ConstituentType)
+    ? (value as ConstituentType)
+    : 'individual';
+}
 
 export async function GET(
   request: NextRequest,
@@ -31,7 +67,7 @@ export async function GET(
       }
 
       // Return HTML for PDF generation
-      const html = generateReceiptHTML(gift, user);
+      const html = generateReceiptHTML(gift, user ?? null);
       return new NextResponse(html, {
         headers: {
           'Content-Type': 'text/html',
@@ -92,7 +128,7 @@ export async function GET(
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        constituentType: user.constituent_type as any,
+        constituentType: normalizeConstituentType(user.constituent_type),
         lifetimeGivingTotal: user.lifetime_giving_total,
       } : null
     );
@@ -109,7 +145,7 @@ export async function GET(
   }
 }
 
-function generateReceiptHTML(gift: any, donor: any): string {
+function generateReceiptHTML(gift: ReceiptGift, donor: ReceiptDonor | null): string {
   const formattedDate = new Date(gift.date).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

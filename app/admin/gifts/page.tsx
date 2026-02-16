@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,6 @@ import {
   FileText,
   RefreshCw,
   CheckCircle,
-  XCircle,
   Clock,
 } from "lucide-react";
 import { getMockGifts, getMockUsers } from "@/lib/mock-store";
@@ -65,18 +64,18 @@ export default function AdminGiftsPage() {
   const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  function loadData() {
+  const loadData = useCallback(() => {
     setIsLoading(true);
     const allGifts = getMockGifts();
     const allUsers = getMockUsers();
     setGifts(allGifts);
     setUsers(allUsers);
     setIsLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const filteredGifts = useMemo(() => {
     let filtered = [...gifts];

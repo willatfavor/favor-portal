@@ -36,7 +36,6 @@ import {
   BarChart3,
   BookOpen,
   Clock,
-  TrendingUp,
   AlertCircle,
 } from "lucide-react";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CommunicationTemplate } from "@/types";
 import { getMockTemplates, setMockTemplates } from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -107,12 +107,23 @@ export default function AdminCommunicationsPage() {
   const [sendLog, setSendLog] = useState<
     { id: string; templateId: string; templateName: string; channel: Channel; sentAt: string }[]
   >([]);
+  const sendLogIdRef = useRef(0);
 
   useEffect(() => {
     setTemplatesState(getMockTemplates());
     try {
       const stored = localStorage.getItem("favor_comms_send_log");
-      if (stored) setSendLog(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored) as {
+          id: string;
+          templateId: string;
+          templateName: string;
+          channel: Channel;
+          sentAt: string;
+        }[];
+        setSendLog(parsed);
+        sendLogIdRef.current = parsed.length;
+      }
     } catch {
       // ignore
     }
@@ -213,8 +224,9 @@ export default function AdminCommunicationsPage() {
   }
 
   function handleTestSend(t: CommunicationTemplate) {
+    sendLogIdRef.current += 1;
     const entry = {
-      id: `send-${Date.now()}`,
+      id: `send-${sendLogIdRef.current}`,
       templateId: t.id,
       templateName: t.name,
       channel: t.channel,

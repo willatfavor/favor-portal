@@ -25,8 +25,6 @@ import { ActivityEvent, Gift, SupportTicket, User } from "@/types";
 import {
   TrendingUp,
   Users,
-  BookOpen,
-  FileText,
   LifeBuoy,
   Filter,
   ClipboardCheck,
@@ -135,7 +133,7 @@ export default function AdminOverviewPage() {
     const unique = Array.from(new Set(dates));
     unique.sort((a, b) => (a > b ? -1 : 1));
     return ["all", ...unique];
-  }, [activity, tickets]);
+  }, [activity, gifts, tickets]);
 
   const filteredUsers = useMemo(() => {
     if (userTypeFilter === "all") return users;

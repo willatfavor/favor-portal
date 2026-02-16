@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -33,7 +32,6 @@ import {
   Edit3,
   CheckCircle,
 } from "lucide-react";
-import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
@@ -51,7 +49,6 @@ interface GivingGoal {
 }
 
 export default function GoalsPage() {
-  const { user } = useAuth();
   const [goals, setGoals] = useState<GivingGoal[]>([
     {
       id: "goal-1",

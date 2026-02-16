@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendMagicLinkEmail } from '@/lib/resend/client';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate magic link using Supabase
-    const { data, error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase(),
       options: {
         shouldCreateUser: false,
