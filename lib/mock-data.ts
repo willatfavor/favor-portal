@@ -12,6 +12,9 @@ import type {
   PortalEvent,
   CommunicationTemplate,
   ActivityEvent,
+  UserRoleAssignment,
+  UserQuizAttempt,
+  CourseModuleEvent,
 } from '@/types';
 
 export const MOCK_USERS: User[] = [
@@ -597,6 +600,60 @@ export const MOCK_NOTES: CourseNote[] = [
     moduleId: 'course-africa-module-1',
     content: 'Key takeaway: Favor pairs local leadership with long-term community support.',
     updatedAt: '2026-01-12T09:15:00Z',
+  },
+];
+
+export const MOCK_USER_ROLES: UserRoleAssignment[] = [
+  {
+    id: 'role-admin-super',
+    userId: 'admin-001',
+    roleKey: 'super_admin',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+  },
+];
+
+export const MOCK_QUIZ_ATTEMPTS: UserQuizAttempt[] = [
+  {
+    id: 'attempt-001',
+    userId: 'user-006',
+    courseId: 'course-ambassador',
+    moduleId: 'course-ambassador-module-2',
+    attemptNumber: 1,
+    scorePercent: 75,
+    correctAnswers: 3,
+    totalQuestions: 4,
+    passed: true,
+    answers: {},
+    questionOrder: [],
+    optionOrder: {},
+    startedAt: '2026-01-24T10:00:00Z',
+    submittedAt: '2026-01-24T10:06:00Z',
+    durationSeconds: 360,
+    metadata: { source: 'seed' },
+  },
+];
+
+export const MOCK_MODULE_EVENTS: CourseModuleEvent[] = [
+  {
+    id: 'module-event-001',
+    userId: 'user-001',
+    courseId: 'course-africa',
+    moduleId: 'course-africa-module-1',
+    eventType: 'module_completed',
+    watchTimeSeconds: 920,
+    createdAt: '2026-01-10T12:00:00Z',
+    metadata: { source: 'seed' },
+  },
+  {
+    id: 'module-event-002',
+    userId: 'user-006',
+    courseId: 'course-ambassador',
+    moduleId: 'course-ambassador-module-1',
+    eventType: 'module_completed',
+    watchTimeSeconds: 760,
+    createdAt: '2026-01-21T12:00:00Z',
+    metadata: { source: 'seed' },
   },
 ];
 

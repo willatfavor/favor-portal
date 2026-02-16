@@ -213,6 +213,8 @@ export interface Database {
           tags: string[];
           cover_image: string | null;
           enforce_sequential: boolean;
+          publish_at: string | null;
+          unpublish_at: string | null;
           updated_at: string;
           created_at: string;
         };
@@ -230,6 +232,8 @@ export interface Database {
           tags?: string[];
           cover_image?: string | null;
           enforce_sequential?: boolean;
+          publish_at?: string | null;
+          unpublish_at?: string | null;
           updated_at?: string;
           created_at?: string;
         };
@@ -247,6 +251,8 @@ export interface Database {
           tags?: string[];
           cover_image?: string | null;
           enforce_sequential?: boolean;
+          publish_at?: string | null;
+          unpublish_at?: string | null;
           updated_at?: string;
           created_at?: string;
         };
@@ -365,6 +371,8 @@ export interface Database {
           completion_rate: number;
           issued_at: string;
           certificate_url: string | null;
+          verification_token: string | null;
+          certificate_number: string | null;
           metadata: Json;
         };
         Insert: {
@@ -374,6 +382,8 @@ export interface Database {
           completion_rate?: number;
           issued_at?: string;
           certificate_url?: string | null;
+          verification_token?: string | null;
+          certificate_number?: string | null;
           metadata?: Json;
         };
         Update: {
@@ -383,7 +393,183 @@ export interface Database {
           completion_rate?: number;
           issued_at?: string;
           certificate_url?: string | null;
+          verification_token?: string | null;
+          certificate_number?: string | null;
           metadata?: Json;
+        };
+        Relationships: [];
+      };
+      user_roles: {
+        Row: {
+          id: string;
+          user_id: string;
+          role_key: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          role_key: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          role_key?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_audit_logs: {
+        Row: {
+          id: string;
+          actor_user_id: string | null;
+          action: string;
+          entity_type: string;
+          entity_id: string | null;
+          details: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_user_id?: string | null;
+          action: string;
+          entity_type: string;
+          entity_id?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_user_id?: string | null;
+          action?: string;
+          entity_type?: string;
+          entity_id?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      course_versions: {
+        Row: {
+          id: string;
+          course_id: string;
+          version_number: number;
+          snapshot: Json;
+          published: boolean;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          version_number: number;
+          snapshot: Json;
+          published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          version_number?: number;
+          snapshot?: Json;
+          published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_quiz_attempts: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          module_id: string;
+          attempt_number: number;
+          score_percent: number;
+          correct_answers: number;
+          total_questions: number;
+          passed: boolean;
+          answers: Json;
+          question_order: string[];
+          option_order: Json;
+          started_at: string;
+          submitted_at: string;
+          duration_seconds: number;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          module_id: string;
+          attempt_number: number;
+          score_percent: number;
+          correct_answers?: number;
+          total_questions?: number;
+          passed?: boolean;
+          answers?: Json;
+          question_order?: string[];
+          option_order?: Json;
+          started_at?: string;
+          submitted_at?: string;
+          duration_seconds?: number;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          module_id?: string;
+          attempt_number?: number;
+          score_percent?: number;
+          correct_answers?: number;
+          total_questions?: number;
+          passed?: boolean;
+          answers?: Json;
+          question_order?: string[];
+          option_order?: Json;
+          started_at?: string;
+          submitted_at?: string;
+          duration_seconds?: number;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
+      course_module_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string;
+          module_id: string;
+          event_type: string;
+          watch_time_seconds: number;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id: string;
+          module_id: string;
+          event_type: string;
+          watch_time_seconds?: number;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string;
+          module_id?: string;
+          event_type?: string;
+          watch_time_seconds?: number;
+          metadata?: Json;
+          created_at?: string;
         };
         Relationships: [];
       };

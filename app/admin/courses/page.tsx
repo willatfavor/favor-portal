@@ -3,15 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Course, CourseModule } from "@/types";
 import {
+  getMockModuleEvents,
   getMockCourses,
   getMockModules,
   getMockNotes,
   getMockProgress,
+  getMockQuizAttempts,
   setMockCourses,
   setMockModules,
 } from "@/lib/mock-store";
 import { createClient } from "@/lib/supabase/client";
 import { isDevBypass } from "@/lib/dev-mode";
+import { useAuth } from "@/hooks/use-auth";
+import { hasAdminPermission } from "@/lib/admin/roles";
 import { QuizBuilder } from "@/components/admin/quiz-builder";
 import {
   createEmptyQuizPayload,
@@ -69,6 +73,8 @@ function mapCourse(row: Tables<"courses">): Course {
     tags: row.tags ?? [],
     coverImage: row.cover_image ?? "",
     enforceSequential: row.enforce_sequential ?? true,
+    publishAt: row.publish_at ?? undefined,
+    unpublishAt: row.unpublish_at ?? undefined,
   };
 }
 
@@ -91,6 +97,7 @@ function mapModule(row: Tables<"course_modules">): CourseModule {
 
 export default function AdminCoursesPage() {
   const supabase = useMemo(() => createClient(), []);
+  const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
@@ -105,6 +112,8 @@ export default function AdminCoursesPage() {
     tags: [],
     coverImage: "",
     enforceSequential: true,
+    publishAt: undefined,
+    unpublishAt: undefined,
   });
   const [moduleDraft, setModuleDraft] = useState<Record<string, Partial<CourseModule>>>({});
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -116,6 +125,11 @@ export default function AdminCoursesPage() {
   const [progressRows, setProgressRows] = useState<Tables<"user_course_progress">[]>([]);
   const [notesRows, setNotesRows] = useState<Tables<"user_course_notes">[]>([]);
   const [certificateRows, setCertificateRows] = useState<Tables<"user_course_certificates">[]>([]);
+  const [quizAttemptRows, setQuizAttemptRows] = useState<Tables<"user_quiz_attempts">[]>([]);
+  const [moduleEventRows, setModuleEventRows] = useState<Tables<"course_module_events">[]>([]);
+
+  const canManageLms = hasAdminPermission("lms:manage", user?.permissions);
+  const canViewAnalytics = hasAdminPermission("analytics:view", user?.permissions);
 
   const loadData = useCallback(async () => {
     setErrorMessage(null);
@@ -171,6 +185,8 @@ export default function AdminCoursesPage() {
           completion_rate: 100,
           issued_at: new Date().toISOString(),
           certificate_url: null,
+          verification_token: null,
+          certificate_number: null,
           metadata: {},
         });
       });
@@ -178,15 +194,57 @@ export default function AdminCoursesPage() {
       setProgressRows(mockProgressRows);
       setNotesRows(mockNoteRows);
       setCertificateRows(mockCertificates);
+      setQuizAttemptRows(
+        getMockQuizAttempts().map((row) => ({
+          id: row.id,
+          user_id: row.userId,
+          course_id: row.courseId,
+          module_id: row.moduleId,
+          attempt_number: row.attemptNumber,
+          score_percent: row.scorePercent,
+          correct_answers: row.correctAnswers,
+          total_questions: row.totalQuestions,
+          passed: row.passed,
+          answers: row.answers,
+          question_order: row.questionOrder,
+          option_order: row.optionOrder,
+          started_at: row.startedAt,
+          submitted_at: row.submittedAt,
+          duration_seconds: row.durationSeconds,
+          metadata: row.metadata ?? {},
+        }))
+      );
+      setModuleEventRows(
+        getMockModuleEvents().map((row) => ({
+          id: row.id,
+          user_id: row.userId,
+          course_id: row.courseId,
+          module_id: row.moduleId,
+          event_type: row.eventType,
+          watch_time_seconds: row.watchTimeSeconds,
+          metadata: row.metadata ?? {},
+          created_at: row.createdAt,
+        }))
+      );
       return;
     }
 
-    const [coursesResult, modulesResult, progressResult, notesResult, certificatesResult] = await Promise.all([
+    const [
+      coursesResult,
+      modulesResult,
+      progressResult,
+      notesResult,
+      certificatesResult,
+      attemptsResult,
+      eventsResult,
+    ] = await Promise.all([
       supabase.from("courses").select("*").order("sort_order", { ascending: true }),
       supabase.from("course_modules").select("*").order("sort_order", { ascending: true }),
       supabase.from("user_course_progress").select("*"),
       supabase.from("user_course_notes").select("*"),
       supabase.from("user_course_certificates").select("*"),
+      supabase.from("user_quiz_attempts").select("*"),
+      supabase.from("course_module_events").select("*"),
     ]);
 
     if (coursesResult.error) {
@@ -210,12 +268,22 @@ export default function AdminCoursesPage() {
       setErrorMessage(certificatesResult.error.message);
       return;
     }
+    if (attemptsResult.error) {
+      setErrorMessage(attemptsResult.error.message);
+      return;
+    }
+    if (eventsResult.error) {
+      setErrorMessage(eventsResult.error.message);
+      return;
+    }
 
     setCourses((coursesResult.data ?? []).map(mapCourse));
     setModules((modulesResult.data ?? []).map(mapModule));
     setProgressRows(progressResult.data ?? []);
     setNotesRows(notesResult.data ?? []);
     setCertificateRows(certificatesResult.data ?? []);
+    setQuizAttemptRows(attemptsResult.data ?? []);
+    setModuleEventRows(eventsResult.data ?? []);
   }, [supabase]);
 
   useEffect(() => {
@@ -237,6 +305,112 @@ export default function AdminCoursesPage() {
     const avgWatchMinutes =
       progressRows.length > 0 ? Math.round(totalWatchSeconds / progressRows.length / 60) : 0;
     const certificatesIssued = certificateRows.length;
+
+    const firstSeenByUser = new Map<string, string>();
+    for (const row of progressRows) {
+      const timestamp = row.completed_at ?? row.last_watched_at;
+      if (!timestamp) continue;
+      const existing = firstSeenByUser.get(row.user_id);
+      if (!existing || timestamp < existing) {
+        firstSeenByUser.set(row.user_id, timestamp);
+      }
+    }
+    const cohortMap = new Map<string, { learners: Set<string>; completions: number }>();
+    firstSeenByUser.forEach((timestamp, userId) => {
+      const cohort = timestamp.slice(0, 7);
+      const entry = cohortMap.get(cohort) ?? { learners: new Set<string>(), completions: 0 };
+      entry.learners.add(userId);
+      cohortMap.set(cohort, entry);
+    });
+    for (const row of progressRows) {
+      if (!row.completed || !row.completed_at) continue;
+      const cohort = row.completed_at.slice(0, 7);
+      const entry = cohortMap.get(cohort) ?? { learners: new Set<string>(), completions: 0 };
+      entry.completions += 1;
+      cohortMap.set(cohort, entry);
+    }
+    const cohorts = Array.from(cohortMap.entries())
+      .map(([cohort, entry]) => ({
+        cohort,
+        learners: entry.learners.size,
+        completions: entry.completions,
+      }))
+      .sort((a, b) => (a.cohort > b.cohort ? -1 : 1))
+      .slice(0, 6);
+
+    const moduleEngagement = modules
+      .map((module) => {
+        const progressForModule = progressRows.filter((row) => row.module_id === module.id);
+        const eventUsers = moduleEventRows
+          .filter((event) => event.module_id === module.id)
+          .map((event) => event.user_id);
+        const started = new Set([...progressForModule.map((row) => row.user_id), ...eventUsers]).size;
+        const completed = progressForModule.filter((row) => row.completed).length;
+        const completionRate = started > 0 ? Math.round((completed / started) * 100) : 0;
+        const avgWatchSeconds =
+          progressForModule.length > 0
+            ? Math.round(
+                progressForModule.reduce((sum, row) => sum + row.watch_time_seconds, 0) /
+                  progressForModule.length
+              )
+            : 0;
+        return {
+          moduleId: module.id,
+          title: module.title,
+          courseId: module.courseId,
+          courseTitle: courses.find((course) => course.id === module.courseId)?.title ?? "Course",
+          moduleType: module.type ?? "video",
+          started,
+          completed,
+          completionRate,
+          avgWatchSeconds,
+        };
+      })
+      .sort((a, b) => a.completionRate - b.completionRate);
+
+    const dropoffModules = moduleEngagement
+      .filter((row) => row.started > 0)
+      .slice(0, 8);
+
+    const quizPerformance = modules
+      .filter((module) => module.type === "quiz")
+      .map((module) => {
+        const attempts = quizAttemptRows.filter((row) => row.module_id === module.id);
+        const passed = attempts.filter((attempt) => attempt.passed).length;
+        const passRate = attempts.length > 0 ? Math.round((passed / attempts.length) * 100) : 0;
+        const averageScore =
+          attempts.length > 0
+            ? Math.round(
+                attempts.reduce((sum, attempt) => sum + attempt.score_percent, 0) /
+                  attempts.length
+              )
+            : 0;
+        return {
+          moduleId: module.id,
+          title: module.title,
+          attempts: attempts.length,
+          passRate,
+          averageScore,
+        };
+      })
+      .sort((a, b) => b.attempts - a.attempts || b.passRate - a.passRate)
+      .slice(0, 8);
+
+    const watchBehavior = modules
+      .map((module) => {
+        const events = moduleEventRows.filter((event) => event.module_id === module.id);
+        const totalWatch = events.reduce((sum, event) => sum + event.watch_time_seconds, 0);
+        const avgWatch = events.length > 0 ? Math.round(totalWatch / events.length) : 0;
+        return {
+          moduleId: module.id,
+          title: module.title,
+          events: events.length,
+          totalWatch,
+          avgWatch,
+        };
+      })
+      .sort((a, b) => b.totalWatch - a.totalWatch)
+      .slice(0, 8);
 
     const topCourses = courses
       .map((course) => {
@@ -265,8 +439,21 @@ export default function AdminCoursesPage() {
       avgWatchMinutes,
       certificatesIssued,
       topCourses,
+      cohorts,
+      dropoffModules,
+      quizPerformance,
+      watchBehavior,
     };
-  }, [certificateRows, courses, modulesByCourse, notesRows.length, progressRows]);
+  }, [
+    certificateRows,
+    courses,
+    moduleEventRows,
+    modules,
+    modulesByCourse,
+    notesRows.length,
+    progressRows,
+    quizAttemptRows,
+  ]);
 
   async function fileToDataUrl(file: File): Promise<string> {
     return await new Promise((resolve, reject) => {
@@ -404,11 +591,65 @@ export default function AdminCoursesPage() {
     }
   }
 
+  function toDateTimeLocal(value: string | undefined): string {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  function fromDateTimeLocal(value: string): string | undefined {
+    if (!value.trim()) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return undefined;
+    return date.toISOString();
+  }
+
+  async function logLmsAudit(action: string, entityType: string, entityId: string, details: Json) {
+    if (isDevBypass || !user?.id) return;
+    await supabase.from("admin_audit_logs").insert({
+      actor_user_id: user.id,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      details,
+    });
+  }
+
+  async function createCourseSnapshot(courseId: string, published: boolean, reason: string) {
+    if (isDevBypass) return;
+    const response = await fetch("/api/admin/lms/version", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        courseId,
+        published,
+        reason,
+      }),
+    });
+    if (!response.ok) {
+      const json = (await response.json()) as { error?: string };
+      throw new Error(json.error || "Unable to create course snapshot");
+    }
+  }
+
   async function saveCourse() {
     if (!newCourse.title || !newCourse.description) return false;
+    if (!canManageLms) {
+      setErrorMessage("You do not have permission to manage LMS content.");
+      return false;
+    }
 
     setIsSaving(true);
     setErrorMessage(null);
+    let savedCourseId: string | null = null;
 
     if (isDevBypass) {
       const course: Course = {
@@ -426,30 +667,53 @@ export default function AdminCoursesPage() {
         tags: newCourse.tags ?? [],
         coverImage: newCourse.coverImage ?? "",
         enforceSequential: newCourse.enforceSequential ?? true,
+        publishAt: newCourse.publishAt,
+        unpublishAt: newCourse.unpublishAt,
       };
       const next = [course, ...courses];
       setCourses(next);
       setMockCourses(next);
+      savedCourseId = course.id;
     } else {
-      const { error } = await supabase.from("courses").insert({
-        title: newCourse.title,
-        description: newCourse.description,
-        access_level: newCourse.accessLevel ?? "partner",
-        sort_order: courses.length + 1,
-        status: newCourse.status ?? "draft",
-        is_locked: newCourse.isLocked ?? false,
-        is_paid: newCourse.isPaid ?? false,
-        price: newCourse.isPaid ? newCourse.price ?? 0 : 0,
-        tags: newCourse.tags ?? [],
-        cover_image: newCourse.coverImage || null,
-        thumbnail_url: newCourse.coverImage || null,
-        enforce_sequential: newCourse.enforceSequential ?? true,
-      });
+      const { data, error } = await supabase
+        .from("courses")
+        .insert({
+          title: newCourse.title,
+          description: newCourse.description,
+          access_level: newCourse.accessLevel ?? "partner",
+          sort_order: courses.length + 1,
+          status: newCourse.status ?? "draft",
+          is_locked: newCourse.isLocked ?? false,
+          is_paid: newCourse.isPaid ?? false,
+          price: newCourse.isPaid ? newCourse.price ?? 0 : 0,
+          tags: newCourse.tags ?? [],
+          cover_image: newCourse.coverImage || null,
+          thumbnail_url: newCourse.coverImage || null,
+          enforce_sequential: newCourse.enforceSequential ?? true,
+          publish_at: newCourse.publishAt ?? null,
+          unpublish_at: newCourse.unpublishAt ?? null,
+        })
+        .select("id,status")
+        .single();
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (error || !data) {
+        setErrorMessage(error?.message || "Failed to create course");
         setIsSaving(false);
         return false;
+      }
+      savedCourseId = data.id;
+      await logLmsAudit("lms.course.create", "course", data.id, {
+        title: newCourse.title,
+        status: data.status,
+      });
+      try {
+        await createCourseSnapshot(data.id, data.status === "published", "course_created");
+      } catch (error) {
+        setUploadMessage(
+          error instanceof Error
+            ? `Course saved, but snapshot failed: ${error.message}`
+            : "Course saved, but snapshot failed."
+        );
       }
       await loadData();
     }
@@ -465,13 +729,22 @@ export default function AdminCoursesPage() {
       tags: [],
       coverImage: "",
       enforceSequential: true,
+      publishAt: undefined,
+      unpublishAt: undefined,
     });
+    if (savedCourseId) {
+      setUploadMessage("Course saved.");
+    }
     setIsSaving(false);
     return true;
   }
 
   async function updateCourse() {
     if (!editingCourse) return;
+    if (!canManageLms) {
+      setErrorMessage("You do not have permission to manage LMS content.");
+      return;
+    }
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -501,6 +774,8 @@ export default function AdminCoursesPage() {
         cover_image: editingCourse.coverImage || null,
         thumbnail_url: editingCourse.coverImage || null,
         enforce_sequential: editingCourse.enforceSequential ?? true,
+        publish_at: editingCourse.publishAt ?? null,
+        unpublish_at: editingCourse.unpublishAt ?? null,
       })
       .eq("id", editingCourse.id);
 
@@ -508,6 +783,25 @@ export default function AdminCoursesPage() {
       setErrorMessage(error.message);
       setIsSaving(false);
       return;
+    }
+
+    await logLmsAudit("lms.course.update", "course", editingCourse.id, {
+      status: editingCourse.status ?? "draft",
+      publishAt: editingCourse.publishAt ?? "",
+      unpublishAt: editingCourse.unpublishAt ?? "",
+    });
+    try {
+      await createCourseSnapshot(
+        editingCourse.id,
+        (editingCourse.status ?? "draft") === "published",
+        "course_updated"
+      );
+    } catch (error) {
+      setUploadMessage(
+        error instanceof Error
+          ? `Course updated, but snapshot failed: ${error.message}`
+          : "Course updated, but snapshot failed."
+      );
     }
 
     setEditingCourse(null);
@@ -518,6 +812,10 @@ export default function AdminCoursesPage() {
   async function addModule(courseId: string) {
     const draft = moduleDraft[courseId];
     if (!draft?.title) return;
+    if (!canManageLms) {
+      setErrorMessage("You do not have permission to manage LMS content.");
+      return;
+    }
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -557,24 +855,43 @@ export default function AdminCoursesPage() {
       setMockModules(next);
     } else {
       const quizPayloadJson = (normalizedQuiz ?? null) as Json | null;
-      const { error } = await supabase.from("course_modules").insert({
-        course_id: courseId,
-        title: draft.title,
-        description: draft.description || null,
-        cloudflare_video_id: cloudflareVideoId,
-        sort_order: existing.length + 1,
-        duration_seconds: draft.durationSeconds || 600,
-        module_type: moduleType,
-        resource_url: draft.resourceUrl || null,
-        notes: draft.notes || null,
-        pass_threshold: draft.passThreshold ?? 70,
-        quiz_payload: quizPayloadJson,
-      });
+      const { data, error } = await supabase
+        .from("course_modules")
+        .insert({
+          course_id: courseId,
+          title: draft.title,
+          description: draft.description || null,
+          cloudflare_video_id: cloudflareVideoId,
+          sort_order: existing.length + 1,
+          duration_seconds: draft.durationSeconds || 600,
+          module_type: moduleType,
+          resource_url: draft.resourceUrl || null,
+          notes: draft.notes || null,
+          pass_threshold: draft.passThreshold ?? 70,
+          quiz_payload: quizPayloadJson,
+        })
+        .select("id,title,module_type")
+        .single();
 
-      if (error) {
-        setErrorMessage(error.message);
+      if (error || !data) {
+        setErrorMessage(error?.message || "Failed to create module");
         setIsSaving(false);
         return;
+      }
+      await logLmsAudit("lms.module.create", "course_module", data.id, {
+        courseId,
+        title: data.title,
+        moduleType: data.module_type,
+      });
+      const parentCourseStatus = courses.find((course) => course.id === courseId)?.status ?? "draft";
+      try {
+        await createCourseSnapshot(courseId, parentCourseStatus === "published", "module_created");
+      } catch (error) {
+        setUploadMessage(
+          error instanceof Error
+            ? `Module saved, but snapshot failed: ${error.message}`
+            : "Module saved, but snapshot failed."
+        );
       }
       await loadData();
     }
@@ -597,6 +914,10 @@ export default function AdminCoursesPage() {
 
   async function updateModule() {
     if (!editingModule) return;
+    if (!canManageLms) {
+      setErrorMessage("You do not have permission to manage LMS content.");
+      return;
+    }
 
     setIsSaving(true);
     setErrorMessage(null);
@@ -641,7 +962,28 @@ export default function AdminCoursesPage() {
     if (error) {
       setErrorMessage(error.message);
       setIsSaving(false);
-        return;
+      return;
+    }
+
+    await logLmsAudit("lms.module.update", "course_module", editingModule.id, {
+      courseId: editingModule.courseId,
+      title: editingModule.title,
+      moduleType: editingModule.type ?? "video",
+    });
+    const parentCourseStatus =
+      courses.find((course) => course.id === editingModule.courseId)?.status ?? "draft";
+    try {
+      await createCourseSnapshot(
+        editingModule.courseId,
+        parentCourseStatus === "published",
+        "module_updated"
+      );
+    } catch (error) {
+      setUploadMessage(
+        error instanceof Error
+          ? `Module updated, but snapshot failed: ${error.message}`
+          : "Module updated, but snapshot failed."
+      );
     }
 
     setEditingModule(null);
@@ -660,7 +1002,11 @@ export default function AdminCoursesPage() {
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[#2b4d24] hover:bg-[#1a3a15]">
+            <Button
+              className="bg-[#2b4d24] hover:bg-[#1a3a15]"
+              disabled={!canManageLms}
+              title={!canManageLms ? "LMS manager permission required" : undefined}
+            >
               <PlusCircle className="mr-2 h-4 w-4" /> New Course
             </Button>
           </DialogTrigger>
@@ -723,6 +1069,28 @@ export default function AdminCoursesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Publish At (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toDateTimeLocal(newCourse.publishAt)}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, publishAt: fromDateTimeLocal(e.target.value) })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unpublish At (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toDateTimeLocal(newCourse.unpublishAt)}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, unpublishAt: fromDateTimeLocal(e.target.value) })
+                    }
+                  />
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -802,7 +1170,7 @@ export default function AdminCoursesPage() {
               </div>
               <Button
                 className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
-                disabled={isSaving}
+                disabled={isSaving || !canManageLms}
                 onClick={async () => {
                   const ok = await saveCourse();
                   if (ok) setCreateOpen(false);
@@ -825,25 +1193,32 @@ export default function AdminCoursesPage() {
           {uploadMessage}
         </div>
       )}
+      {!canManageLms && (
+        <div className="rounded-xl border border-[#a36d4c]/30 bg-[#a36d4c]/10 px-4 py-3 text-sm text-[#7a5038]">
+          You have view access only. LMS manager permission is required for editing.
+        </div>
+      )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {[
-          { label: "Active Learners", value: lmsAnalytics.activeLearners },
-          { label: "Module Completions", value: lmsAnalytics.completedRows },
-          { label: "Notes Saved", value: lmsAnalytics.notesCount },
-          { label: "Avg Watch (min)", value: lmsAnalytics.avgWatchMinutes },
-          { label: "Certificates", value: lmsAnalytics.certificatesIssued },
-        ].map((metric) => (
-          <Card key={metric.label} className="glass-subtle border-0">
-            <CardContent className="p-4">
-              <p className="text-[11px] uppercase tracking-wide text-[#8b957b]">{metric.label}</p>
-              <p className="mt-1 text-2xl font-semibold text-[#1a1a1a]">{metric.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {canViewAnalytics && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            { label: "Active Learners", value: lmsAnalytics.activeLearners },
+            { label: "Module Completions", value: lmsAnalytics.completedRows },
+            { label: "Notes Saved", value: lmsAnalytics.notesCount },
+            { label: "Avg Watch (min)", value: lmsAnalytics.avgWatchMinutes },
+            { label: "Certificates", value: lmsAnalytics.certificatesIssued },
+          ].map((metric) => (
+            <Card key={metric.label} className="glass-subtle border-0">
+              <CardContent className="p-4">
+                <p className="text-[11px] uppercase tracking-wide text-[#8b957b]">{metric.label}</p>
+                <p className="mt-1 text-2xl font-semibold text-[#1a1a1a]">{metric.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {lmsAnalytics.topCourses.length > 0 && (
+      {canViewAnalytics && lmsAnalytics.topCourses.length > 0 && (
         <Card className="glass-subtle border-0">
           <CardHeader className="pb-2">
             <CardTitle className="font-serif text-lg">Top Course Performance</CardTitle>
@@ -856,7 +1231,94 @@ export default function AdminCoursesPage() {
               >
                 <span className="text-sm text-[#1a1a1a]">{row.title}</span>
                 <span className="text-xs text-[#666666]">
-                  {row.learners} learners • {row.completionRate}% completion • {row.certificates} certificates
+                  {row.learners} learners | {row.completionRate}% completion | {row.certificates} certificates
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {canViewAnalytics && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="glass-subtle border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-lg">Learner Cohorts</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {lmsAnalytics.cohorts.length === 0 ? (
+                <p className="text-xs text-[#999999]">No cohort data yet.</p>
+              ) : (
+                lmsAnalytics.cohorts.map((row) => (
+                  <div key={row.cohort} className="rounded-lg border border-[#c5ccc2]/50 px-3 py-2 text-xs">
+                    <p className="font-medium text-[#1a1a1a]">{row.cohort}</p>
+                    <p className="text-[#666666]">
+                      {row.learners} learners | {row.completions} module completions
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-subtle border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-lg">Module Drop-Off</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {lmsAnalytics.dropoffModules.length === 0 ? (
+                <p className="text-xs text-[#999999]">No drop-off data yet.</p>
+              ) : (
+                lmsAnalytics.dropoffModules.map((row) => (
+                  <div key={row.moduleId} className="rounded-lg border border-[#c5ccc2]/50 px-3 py-2 text-xs">
+                    <p className="font-medium text-[#1a1a1a]">{row.title}</p>
+                    <p className="text-[#666666]">
+                      {row.completionRate}% completion | {row.started} started | avg watch{" "}
+                      {Math.round(row.avgWatchSeconds / 60)} min
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-subtle border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-lg">Quiz Performance</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {lmsAnalytics.quizPerformance.length === 0 ? (
+                <p className="text-xs text-[#999999]">No quiz attempts yet.</p>
+              ) : (
+                lmsAnalytics.quizPerformance.map((row) => (
+                  <div key={row.moduleId} className="rounded-lg border border-[#c5ccc2]/50 px-3 py-2 text-xs">
+                    <p className="font-medium text-[#1a1a1a]">{row.title}</p>
+                    <p className="text-[#666666]">
+                      {row.attempts} attempts | {row.passRate}% pass rate | avg score {row.averageScore}%
+                    </p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {canViewAnalytics && lmsAnalytics.watchBehavior.length > 0 && (
+        <Card className="glass-subtle border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-lg">Module Watch Behavior</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {lmsAnalytics.watchBehavior.slice(0, 8).map((row) => (
+              <div
+                key={row.moduleId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#c5ccc2]/50 px-3 py-2"
+              >
+                <span className="text-sm text-[#1a1a1a]">{row.title}</span>
+                <span className="text-xs text-[#666666]">
+                  {row.events} events | total {Math.round(row.totalWatch / 60)} min | avg{" "}
+                  {Math.round(row.avgWatch / 60)} min
                 </span>
               </div>
             ))}
@@ -892,6 +1354,16 @@ export default function AdminCoursesPage() {
                         Paid - ${course.price ?? 0}
                       </Badge>
                     )}
+                    {course.publishAt && (
+                      <Badge variant="outline" className="text-[10px] text-[#8b957b]">
+                        Publishes {new Date(course.publishAt).toLocaleString()}
+                      </Badge>
+                    )}
+                    {course.unpublishAt && (
+                      <Badge variant="outline" className="text-[10px] text-[#a36d4c]">
+                        Unpublishes {new Date(course.unpublishAt).toLocaleString()}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -911,6 +1383,7 @@ export default function AdminCoursesPage() {
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={!canManageLms}
                           onClick={() => setEditingModule(module)}
                         >
                           <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
@@ -1105,15 +1578,38 @@ export default function AdminCoursesPage() {
                     }
                   />
                 </div>
-                <Button variant="outline" disabled={isSaving} onClick={() => void addModule(course.id)}>
+                <Button
+                  variant="outline"
+                  disabled={isSaving || !canManageLms}
+                  onClick={() => void addModule(course.id)}
+                >
                   {isSaving ? "Saving..." : "Add Module"}
                 </Button>
                 <Button
                   variant="ghost"
                   className="text-[#2b4d24]"
+                  disabled={!canManageLms}
                   onClick={() => setEditingCourse(course)}
                 >
                   <Pencil className="mr-2 h-4 w-4" /> Edit course settings
+                </Button>
+                <Button
+                  variant="ghost"
+                  disabled={!canManageLms}
+                  onClick={async () => {
+                    try {
+                      await createCourseSnapshot(
+                        course.id,
+                        (course.status ?? "draft") === "published",
+                        "manual_snapshot"
+                      );
+                      setUploadMessage("Snapshot saved.");
+                    } catch (error) {
+                      setErrorMessage(error instanceof Error ? error.message : "Failed to create snapshot");
+                    }
+                  }}
+                >
+                  Save Snapshot
                 </Button>
               </CardContent>
             </Card>
@@ -1180,6 +1676,34 @@ export default function AdminCoursesPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Publish At (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toDateTimeLocal(editingCourse.publishAt)}
+                    onChange={(e) =>
+                      setEditingCourse({
+                        ...editingCourse,
+                        publishAt: fromDateTimeLocal(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unpublish At (optional)</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toDateTimeLocal(editingCourse.unpublishAt)}
+                    onChange={(e) =>
+                      setEditingCourse({
+                        ...editingCourse,
+                        unpublishAt: fromDateTimeLocal(e.target.value),
+                      })
+                    }
+                  />
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1261,7 +1785,7 @@ export default function AdminCoursesPage() {
               </div>
               <Button
                 className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
-                disabled={isSaving}
+                disabled={isSaving || !canManageLms}
                 onClick={() => void updateCourse()}
               >
                 {isSaving ? "Saving..." : "Save Changes"}
@@ -1427,7 +1951,7 @@ export default function AdminCoursesPage() {
               </div>
               <Button
                 className="w-full bg-[#2b4d24] hover:bg-[#1a3a15]"
-                disabled={isSaving}
+                disabled={isSaving || !canManageLms}
                 onClick={() => void updateModule()}
               >
                 {isSaving ? "Saving..." : "Save Module"}

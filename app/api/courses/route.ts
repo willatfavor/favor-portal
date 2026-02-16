@@ -115,6 +115,8 @@ export async function GET() {
       tags: course.tags,
       coverImage: course.cover_image,
       enforceSequential: course.enforce_sequential ?? true,
+      publishAt: course.publish_at,
+      unpublishAt: course.unpublish_at,
       createdAt: course.created_at,
     })) || [];
 

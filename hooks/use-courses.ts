@@ -8,6 +8,7 @@ import { isDevBypass } from '@/lib/dev-mode';
 import {
   getMockCourses,
   getMockModules,
+  recordMockModuleEvent,
   getMockProgressForUser,
   upsertMockProgress,
   recordActivity,
@@ -46,6 +47,8 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
       tags: c.tags ?? [],
       coverImage: c.cover_image || undefined,
       enforceSequential: c.enforce_sequential ?? true,
+      publishAt: c.publish_at || undefined,
+      unpublishAt: c.unpublish_at || undefined,
     };
   }
 
@@ -174,6 +177,18 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
           completed: nextCompleted,
         },
       });
+      if (targetModule) {
+        recordMockModuleEvent({
+          id: `module-event-${Date.now()}`,
+          userId,
+          courseId: targetModule.courseId,
+          moduleId,
+          eventType: nextCompleted ? 'module_completed' : 'module_reopened',
+          watchTimeSeconds: nextWatchTime,
+          createdAt: now,
+          metadata: { source: 'dev' },
+        });
+      }
       setProgress(getMockProgressForUser(userId));
       return;
     }
@@ -194,6 +209,20 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
     if (upsertError) {
       setError(upsertError);
       return;
+    }
+
+    const targetModule = modules.find((entry) => entry.id === moduleId);
+    if (targetModule) {
+      await supabase.from('course_module_events').insert({
+        user_id: userId,
+        course_id: targetModule.courseId,
+        module_id: moduleId,
+        event_type: nextCompleted ? 'module_completed' : 'module_reopened',
+        watch_time_seconds: nextWatchTime,
+        metadata: {
+          source: 'progress_update',
+        },
+      });
     }
 
     const { data: progressData, error: progressError } = await supabase

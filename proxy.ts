@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { hasAdminPermission, resolveAdminPermissions } from '@/lib/admin/roles';
+import type { AdminPermission } from '@/types';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -13,10 +15,21 @@ const publicRoutes = [
   '/verify',
   '/api/auth/magic-link',
   '/api/auth/verify',
+  '/api/certificates/verify',
+  '/certificates',
   '/_next',
   '/static',
   '/favicon.ico',
 ];
+
+function requiredAdminPermission(pathname: string): AdminPermission {
+  if (pathname.startsWith('/admin/users')) return 'users:manage';
+  if (pathname.startsWith('/admin/courses')) return 'lms:manage';
+  if (pathname.startsWith('/admin/content')) return 'content:manage';
+  if (pathname.startsWith('/admin/communications')) return 'content:manage';
+  if (pathname.startsWith('/admin/support')) return 'support:manage';
+  return 'admin:access';
+}
 
 export async function proxy(request: NextRequest) {
   if (isDevBypass) {
@@ -69,14 +82,31 @@ export async function proxy(request: NextRequest) {
     }
 
     if (pathname.startsWith('/admin')) {
-      const { data: userRow, error: userError } = await supabase
-        .from('users')
-        .select('is_admin')
-        .eq('id', session.user.id)
-        .single();
+      const [{ data: userRow, error: userError }, { data: roleRows }] = await Promise.all([
+        supabase
+          .from('users')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single(),
+        supabase
+          .from('user_roles')
+          .select('role_key')
+          .eq('user_id', session.user.id),
+      ]);
 
-      if (userError || !userRow?.is_admin) {
+      if (userError) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+
+      const roles = (roleRows ?? []).map((row) => row.role_key);
+      const permissions = resolveAdminPermissions(Boolean(userRow?.is_admin), roles);
+      if (!hasAdminPermission('admin:access', permissions)) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+
+      const required = requiredAdminPermission(pathname);
+      if (!hasAdminPermission(required, permissions)) {
+        return NextResponse.redirect(new URL('/admin', request.url));
       }
     }
   }

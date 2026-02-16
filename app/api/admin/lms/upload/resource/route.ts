@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminAccessContext, requireAdminPermission } from "@/lib/admin/permissions";
+import { logAdminAudit } from "@/lib/admin/audit";
 
 const DEFAULT_BUCKET = process.env.SUPABASE_LMS_ASSETS_BUCKET || "lms-assets";
 
@@ -23,14 +25,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: userRow, error: userError } = await supabase
-      .from("users")
-      .select("is_admin")
-      .eq("id", session.user.id)
-      .single();
-
-    if (userError || !userRow?.is_admin) {
-      return NextResponse.json({ error: "Admin required" }, { status: 403 });
+    const access = await getAdminAccessContext(supabase, session.user.id);
+    if (!requireAdminPermission(access, "lms:manage")) {
+      return NextResponse.json({ error: "LMS manager permission required" }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -53,6 +50,17 @@ export async function POST(request: Request) {
 
     if (uploadError || !uploaded?.path) {
       const fallbackDataUrl = await fileToDataUrl(file);
+      await logAdminAudit(supabase, {
+        actorUserId: session.user.id,
+        action: "lms.upload.resource.fallback",
+        entityType: "course_module_asset",
+        details: {
+          filename: file.name,
+          size: file.size,
+          bucket: DEFAULT_BUCKET,
+          reason: uploadError?.message ?? "upload_failed",
+        },
+      });
       return NextResponse.json(
         {
           success: true,
@@ -67,6 +75,18 @@ export async function POST(request: Request) {
     }
 
     const { data: publicUrlData } = supabase.storage.from(DEFAULT_BUCKET).getPublicUrl(uploaded.path);
+
+    await logAdminAudit(supabase, {
+      actorUserId: session.user.id,
+      action: "lms.upload.resource.storage",
+      entityType: "course_module_asset",
+      entityId: uploaded.path,
+      details: {
+        filename: file.name,
+        size: file.size,
+        bucket: DEFAULT_BUCKET,
+      },
+    });
 
     return NextResponse.json(
       {

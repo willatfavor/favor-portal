@@ -7,6 +7,23 @@ export type ConstituentType =
   | 'ambassador' 
   | 'volunteer';
 
+export type AdminRoleKey =
+  | 'super_admin'
+  | 'lms_manager'
+  | 'content_manager'
+  | 'support_manager'
+  | 'analyst'
+  | 'viewer';
+
+export type AdminPermission =
+  | 'admin:access'
+  | 'users:manage'
+  | 'lms:manage'
+  | 'content:manage'
+  | 'support:manage'
+  | 'analytics:view'
+  | 'audit:view';
+
 export interface User {
   id: string;
   email: string;
@@ -21,6 +38,8 @@ export interface User {
   lastLogin?: string;
   avatarUrl?: string;
   isAdmin?: boolean;
+  roles?: AdminRoleKey[];
+  permissions?: AdminPermission[];
 }
 
 export interface Gift {
@@ -93,6 +112,8 @@ export interface Course {
   tags?: string[];
   coverImage?: string;
   enforceSequential?: boolean;
+  publishAt?: string;
+  unpublishAt?: string;
 }
 
 export interface CourseModule {
@@ -126,6 +147,70 @@ export interface CourseNote {
   moduleId: string;
   content: string;
   updatedAt: string;
+}
+
+export interface UserQuizAttempt {
+  id: string;
+  userId: string;
+  courseId: string;
+  moduleId: string;
+  attemptNumber: number;
+  scorePercent: number;
+  correctAnswers: number;
+  totalQuestions: number;
+  passed: boolean;
+  answers: Record<string, string | number>;
+  questionOrder: string[];
+  optionOrder: Record<string, number[]>;
+  startedAt: string;
+  submittedAt: string;
+  durationSeconds: number;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export interface CourseModuleEvent {
+  id: string;
+  userId: string;
+  courseId: string;
+  moduleId: string;
+  eventType:
+    | 'module_viewed'
+    | 'module_started'
+    | 'module_completed'
+    | 'module_reopened'
+    | 'quiz_passed'
+    | 'quiz_failed';
+  watchTimeSeconds: number;
+  createdAt: string;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export interface UserRoleAssignment {
+  id: string;
+  userId: string;
+  roleKey: AdminRoleKey;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAuditLog {
+  id: string;
+  actorUserId?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  details?: Record<string, string | number | boolean>;
+  createdAt: string;
+}
+
+export interface CourseVersionSnapshot {
+  id: string;
+  courseId: string;
+  versionNumber: number;
+  snapshot: Record<string, unknown>;
+  published: boolean;
+  createdBy?: string;
+  createdAt: string;
 }
 
 export interface FoundationGrant {

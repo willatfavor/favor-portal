@@ -107,10 +107,10 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 ---
 
 ## Database Migrations
-
 Before deployment or for local development with Supabase, apply the migrations in order:
 1. `database/migrations/001_initial_schema.sql` - Core tables (users, giving_cache, etc.)
 2. `database/migrations/002_lms_production_upgrade.sql` - LMS extensions and RLS policies.
+3. `database/migrations/003_lms_advanced_features.sql` - LMS RBAC, analytics, versioning, and certificate verification.
 
 ---
 

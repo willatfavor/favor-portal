@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { getMockUsers } from "@/lib/mock-store";
+import { hasAdminPermission } from "@/lib/admin/roles";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,26 +21,34 @@ import {
 import { cn } from "@/lib/utils";
 
 const ADMIN_NAV = [
-  { name: "Overview", href: "/admin", icon: Home },
-  { name: "Users", href: "/admin/users", icon: Users },
-  { name: "LMS", href: "/admin/courses", icon: GraduationCap },
-  { name: "Content", href: "/admin/content", icon: FileText },
-  { name: "Comms", href: "/admin/communications", icon: Mail },
-  { name: "Support", href: "/admin/support", icon: LifeBuoy },
+  { name: "Overview", href: "/admin", icon: Home, permission: "admin:access" as const },
+  { name: "Users", href: "/admin/users", icon: Users, permission: "users:manage" as const },
+  { name: "LMS", href: "/admin/courses", icon: GraduationCap, permission: "lms:manage" as const },
+  { name: "Content", href: "/admin/content", icon: FileText, permission: "content:manage" as const },
+  {
+    name: "Comms",
+    href: "/admin/communications",
+    icon: Mail,
+    permission: "content:manage" as const,
+  },
+  { name: "Support", href: "/admin/support", icon: LifeBuoy, permission: "support:manage" as const },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isDev, setDevUser } = useAuth();
+  const permissions = user?.permissions ?? [];
+  const canAccessAdmin = hasAdminPermission("admin:access", permissions);
+  const visibleNav = ADMIN_NAV.filter((item) => hasAdminPermission(item.permission, permissions));
 
   const activeHref = useMemo(() => {
-    const exact = ADMIN_NAV.find((item) => pathname === item.href);
+    const exact = visibleNav.find((item) => pathname === item.href);
     if (exact) return exact.href;
-    const prefix = ADMIN_NAV.find((item) => pathname.startsWith(item.href));
+    const prefix = visibleNav.find((item) => pathname.startsWith(item.href));
     return prefix?.href;
-  }, [pathname]);
+  }, [pathname, visibleNav]);
 
-  if (!user?.isAdmin) {
+  if (!canAccessAdmin) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center px-4">
         <div className="max-w-md rounded-2xl glass-pane p-6 text-center space-y-4">
@@ -49,7 +58,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div>
             <h2 className="font-serif text-2xl text-[#1a1a1a]">Admin access required</h2>
             <p className="text-sm text-[#666666] mt-2">
-              This area is reserved for internal staff. Switch to an admin profile to continue.
+              This area is reserved for internal staff with admin permissions.
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -62,7 +71,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Button
                 className="bg-[#2b4d24] hover:bg-[#1a3a15]"
                 onClick={() => {
-                  const adminUser = getMockUsers().find((u) => u.isAdmin);
+                  const adminUser = getMockUsers().find((u) => u.isAdmin || (u.roles ?? []).length > 0);
                   if (adminUser) setDevUser?.(adminUser.id);
                 }}
               >
@@ -94,7 +103,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
           <aside className="space-y-2">
-            {ADMIN_NAV.map((item) => {
+            {visibleNav.map((item) => {
               const Icon = item.icon;
               const isActive = item.href === activeHref;
               return (

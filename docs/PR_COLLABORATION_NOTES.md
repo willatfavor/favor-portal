@@ -23,5 +23,21 @@ These are also enforced in CI via `.github/workflows/ci.yml`.
 - If touching LMS schema/contracts, link `docs/LMS_PRODUCTION_HANDOFF.md` and call out migration impacts explicitly.
 - If touching LMS quiz/certificate/upload behavior, call out any contract changes for:
   - `course_modules.quiz_payload`
+  - `user_quiz_attempts`
+  - `course_module_events`
   - `user_course_certificates`
+  - `/api/certificates/issue`
+  - `/api/certificates/verify/[token]`
   - `/api/admin/lms/upload/*`
+  - `/api/admin/lms/version`
+  - `/api/admin/lms/analytics`
+
+## Migration Notes
+- Migrations must be applied in-order:
+  - `database/migrations/001_initial_schema.sql`
+  - `database/migrations/002_lms_production_upgrade.sql`
+  - `database/migrations/003_lms_advanced_features.sql`
+- Any PR adding schema changes must include:
+  - exact migration filename(s)
+  - rollback strategy
+  - RLS/policy impact summary

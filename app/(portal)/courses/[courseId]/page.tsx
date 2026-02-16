@@ -13,7 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/portal/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getStreamUrl } from "@/lib/cloudflare/client";
-import { QuizResult, gradeQuiz, normalizeQuizPayload } from "@/lib/lms/quiz";
+import {
+  QuizResult,
+  createQuizSession,
+  gradeQuizSession,
+  normalizeQuizPayload,
+} from "@/lib/lms/quiz";
 import {
   ArrowRight,
   BookOpen,
@@ -24,8 +29,15 @@ import {
   Lock,
   PlayCircle,
 } from "lucide-react";
-import { getMockNoteForModule, upsertMockNote } from "@/lib/mock-store";
+import {
+  addMockQuizAttempt,
+  getMockNoteForModule,
+  getMockQuizAttemptsForModule,
+  recordMockModuleEvent,
+  upsertMockNote,
+} from "@/lib/mock-store";
 import { isDevBypass } from "@/lib/dev-mode";
+import type { UserQuizAttempt } from "@/types";
 
 function sanitizeFilename(value: string) {
   return value
@@ -59,11 +71,18 @@ export default function CourseDetailPage() {
   const [noteUpdatedAt, setNoteUpdatedAt] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [noteSaved, setNoteSaved] = useState(false);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [quizSessionSeed, setQuizSessionSeed] = useState("");
+  const [quizAttemptStartedAt, setQuizAttemptStartedAt] = useState<string | null>(null);
+  const [quizAttempts, setQuizAttempts] = useState<UserQuizAttempt[]>([]);
+  const [quizAttemptError, setQuizAttemptError] = useState<string | null>(null);
   const [certificateIssuedAt, setCertificateIssuedAt] = useState<string | null>(null);
   const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
+  const [certificateVerificationUrl, setCertificateVerificationUrl] = useState<string | null>(null);
+  const [certificateNumber, setCertificateNumber] = useState<string | null>(null);
 
   const course = useMemo(
     () => courses.find((c) => c.id === courseId),
@@ -166,51 +185,136 @@ export default function CourseDetailPage() {
     setQuizAnswers({});
     setQuizResult(null);
     setQuizError(null);
-  }, [activeModuleId]);
+    setQuizAttemptError(null);
+    setQuizSessionSeed(`${activeModuleId ?? "module"}:${user?.id ?? "anonymous"}:${Date.now()}`);
+    setQuizAttemptStartedAt(new Date().toISOString());
 
-  useEffect(() => {
-    if (!user || !course || !isCourseComplete) return;
-    if (isDevBypass) {
-      setCertificateIssuedAt(new Date().toISOString());
-      return;
-    }
-
-    const currentUserId = user.id;
-    const currentCourseId = course.id;
-    const currentCourseTitle = course.title;
-    const currentModuleCount = courseModules.length;
-
-    async function issueCertificate() {
-      setCertificateError(null);
-      const issuedAt = new Date().toISOString();
-      const { data, error } = await supabase
-        .from("user_course_certificates")
-        .upsert(
-          {
-            user_id: currentUserId,
-            course_id: currentCourseId,
-            completion_rate: 100,
-            issued_at: issuedAt,
-            metadata: {
-              courseTitle: currentCourseTitle,
-              moduleCount: currentModuleCount,
-            },
-          },
-          { onConflict: "user_id,course_id" }
-        )
-        .select("*")
-        .single();
-
-      if (error) {
-        setCertificateError("Unable to issue certificate right now.");
+    async function loadQuizAttempts() {
+      if (!user?.id || !activeModuleId) {
+        setQuizAttempts([]);
         return;
       }
 
-      setCertificateIssuedAt(data.issued_at ?? issuedAt);
+      if (isDevBypass) {
+        setQuizAttempts(getMockQuizAttemptsForModule(user.id, activeModuleId));
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("user_quiz_attempts")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("module_id", activeModuleId)
+        .order("attempt_number", { ascending: false });
+
+      if (error) {
+        setQuizAttemptError("Unable to load quiz attempt history.");
+        setQuizAttempts([]);
+        return;
+      }
+
+      const attempts = (data ?? []).map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        courseId: row.course_id,
+        moduleId: row.module_id,
+        attemptNumber: row.attempt_number,
+        scorePercent: row.score_percent,
+        correctAnswers: row.correct_answers,
+        totalQuestions: row.total_questions,
+        passed: row.passed,
+        answers: (row.answers as Record<string, string | number>) ?? {},
+        questionOrder: row.question_order ?? [],
+        optionOrder: (row.option_order as Record<string, number[]>) ?? {},
+        startedAt: row.started_at,
+        submittedAt: row.submitted_at,
+        durationSeconds: row.duration_seconds,
+        metadata:
+          row.metadata && typeof row.metadata === "object"
+            ? (row.metadata as Record<string, string | number | boolean>)
+            : undefined,
+      }));
+      setQuizAttempts(attempts);
+    }
+
+    void loadQuizAttempts();
+  }, [activeModuleId, supabase, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !courseId || !activeModuleId) return;
+
+    const moduleEntry = modules.find((entry) => entry.id === activeModuleId);
+    if (!moduleEntry) return;
+
+    const now = new Date().toISOString();
+    if (isDevBypass) {
+      recordMockModuleEvent({
+        id: `module-event-${Date.now()}`,
+        userId: user.id,
+        courseId,
+        moduleId: activeModuleId,
+        eventType: "module_viewed",
+        watchTimeSeconds: 0,
+        createdAt: now,
+        metadata: { source: "dev" },
+      });
+      return;
+    }
+
+    void supabase.from("course_module_events").insert({
+      user_id: user.id,
+      course_id: moduleEntry.courseId,
+      module_id: activeModuleId,
+      event_type: "module_viewed",
+      watch_time_seconds: 0,
+      metadata: {
+        source: "module_change",
+      },
+    });
+  }, [activeModuleId, courseId, modules, supabase, user?.id]);
+
+  useEffect(() => {
+    if (!user || !course || !isCourseComplete) return;
+    const currentCourseId = course.id;
+    if (isDevBypass) {
+      const now = new Date().toISOString();
+      setCertificateIssuedAt(now);
+      setCertificateUrl(null);
+      setCertificateVerificationUrl(`/certificates/dev-${course.id}`);
+      setCertificateNumber(`DEV-${course.id.toUpperCase()}`);
+      return;
+    }
+
+    async function issueCertificate() {
+      setCertificateError(null);
+      const response = await fetch("/api/certificates/issue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ courseId: currentCourseId }),
+      });
+      const json = (await response.json()) as {
+        issuedAt?: string;
+        certificateUrl?: string | null;
+        verificationUrl?: string | null;
+        certificateNumber?: string | null;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setCertificateError(json.error || "Unable to issue certificate right now.");
+        return;
+      }
+
+      setCertificateIssuedAt(json.issuedAt ?? new Date().toISOString());
+      setCertificateUrl(json.certificateUrl ?? null);
+      setCertificateVerificationUrl(json.verificationUrl ?? null);
+      setCertificateNumber(json.certificateNumber ?? null);
     }
 
     void issueCertificate();
-  }, [course, courseModules.length, isCourseComplete, supabase, user]);
+  }, [course, isCourseComplete, user]);
 
   if (isLoading) {
     return (
@@ -239,6 +343,13 @@ export default function CourseDetailPage() {
   const activeModuleUnlocked = activeModule ? Boolean(moduleUnlockMap.get(activeModule.id)) : false;
   const activeQuizPayload =
     activeModuleType === "quiz" ? normalizeQuizPayload(activeModule?.quizPayload) : null;
+  const activeQuizSession =
+    activeQuizPayload && activeModule
+      ? createQuizSession(
+          activeQuizPayload,
+          quizSessionSeed || `${activeModule.id}:${user?.id ?? "anonymous"}`
+        )
+      : null;
   const activeModuleIndex = activeModule
     ? courseModules.findIndex((module) => module.id === activeModule.id)
     : -1;
@@ -301,10 +412,14 @@ export default function CourseDetailPage() {
   }
 
   function submitQuizAttempt() {
-    if (!activeModule || !activeQuizPayload) return;
+    if (!user || !course || !activeModule || !activeQuizSession) return;
     if (!activeModuleUnlocked) return;
+    const currentUser = user;
+    const currentCourse = course;
+    const currentModule = activeModule;
+    const currentQuizSession = activeQuizSession;
 
-    const unanswered = activeQuizPayload.questions.filter(
+    const unanswered = currentQuizSession.questions.filter(
       (question) => quizAnswers[question.id] === undefined
     );
     if (unanswered.length > 0) {
@@ -312,23 +427,152 @@ export default function CourseDetailPage() {
       return;
     }
 
-    const result = gradeQuiz(
-      activeQuizPayload,
+    const result = gradeQuizSession(
+      currentQuizSession,
       quizAnswers,
-      activeModule.passThreshold ?? 70
+      currentModule.passThreshold ?? 70
     );
     setQuizResult(result);
     setQuizError(null);
-    if (result.passed) {
-      void updateProgress(activeModule.id, {
-        completed: true,
-        watchTimeSeconds: activeModule.durationSeconds,
-      });
+    setQuizAttemptError(null);
+
+    const now = new Date().toISOString();
+    const durationSeconds = quizAttemptStartedAt
+      ? Math.max(1, Math.floor((new Date(now).getTime() - new Date(quizAttemptStartedAt).getTime()) / 1000))
+      : 0;
+    const nextAttemptNumber = (quizAttempts[0]?.attemptNumber ?? 0) + 1;
+    const nextAttempt: UserQuizAttempt = {
+      id: `attempt-${now.replace(/[^0-9]/g, "")}`,
+      userId: currentUser.id,
+      courseId: currentCourse.id,
+      moduleId: currentModule.id,
+      attemptNumber: nextAttemptNumber,
+      scorePercent: result.scorePercent,
+      correctAnswers: result.correctAnswers,
+      totalQuestions: result.totalQuestions,
+      passed: result.passed,
+      answers: quizAnswers,
+      questionOrder: currentQuizSession.questionOrder,
+      optionOrder: currentQuizSession.optionOrderByQuestion,
+      startedAt: quizAttemptStartedAt ?? now,
+      submittedAt: now,
+      durationSeconds,
+      metadata: {
+        seed: currentQuizSession.seed,
+      },
+    };
+
+    async function persistAttempt() {
+      if (isDevBypass) {
+        addMockQuizAttempt(nextAttempt);
+        recordMockModuleEvent({
+          id: `module-event-${Date.now()}`,
+          userId: currentUser.id,
+          courseId: currentCourse.id,
+          moduleId: currentModule.id,
+          eventType: result.passed ? "quiz_passed" : "quiz_failed",
+          watchTimeSeconds: currentModule.durationSeconds,
+          createdAt: now,
+          metadata: { score: result.scorePercent },
+        });
+        setQuizAttempts((current) => [nextAttempt, ...current]);
+      } else {
+        const { data, error } = await supabase
+          .from("user_quiz_attempts")
+          .insert({
+            user_id: currentUser.id,
+            course_id: currentCourse.id,
+            module_id: currentModule.id,
+            attempt_number: nextAttemptNumber,
+            score_percent: result.scorePercent,
+            correct_answers: result.correctAnswers,
+            total_questions: result.totalQuestions,
+            passed: result.passed,
+            answers: quizAnswers,
+            question_order: currentQuizSession.questionOrder,
+            option_order: currentQuizSession.optionOrderByQuestion,
+            started_at: quizAttemptStartedAt ?? now,
+            submitted_at: now,
+            duration_seconds: durationSeconds,
+            metadata: {
+              seed: currentQuizSession.seed,
+            },
+            })
+          .select("*")
+          .single();
+
+        if (error) {
+          setQuizAttemptError("Attempt saved locally in this session, but history failed to persist.");
+        } else {
+          setQuizAttempts((current) => [
+            {
+              id: data.id,
+              userId: data.user_id,
+              courseId: data.course_id,
+              moduleId: data.module_id,
+              attemptNumber: data.attempt_number,
+              scorePercent: data.score_percent,
+              correctAnswers: data.correct_answers,
+              totalQuestions: data.total_questions,
+              passed: data.passed,
+              answers: (data.answers as Record<string, string | number>) ?? {},
+              questionOrder: data.question_order ?? [],
+              optionOrder: (data.option_order as Record<string, number[]>) ?? {},
+              startedAt: data.started_at,
+              submittedAt: data.submitted_at,
+              durationSeconds: data.duration_seconds,
+              metadata:
+                data.metadata && typeof data.metadata === "object"
+                  ? (data.metadata as Record<string, string | number | boolean>)
+                  : undefined,
+            },
+            ...current,
+          ]);
+        }
+
+        await supabase.from("course_module_events").insert({
+          user_id: currentUser.id,
+          course_id: currentCourse.id,
+          module_id: currentModule.id,
+          event_type: result.passed ? "quiz_passed" : "quiz_failed",
+          watch_time_seconds: currentModule.durationSeconds,
+          metadata: {
+            score: result.scorePercent,
+            attemptNumber: nextAttemptNumber,
+          },
+        });
+      }
+
+      if (result.passed) {
+        await updateProgress(currentModule.id, {
+          completed: true,
+          watchTimeSeconds: currentModule.durationSeconds,
+        });
+      }
     }
+
+    void persistAttempt();
+  }
+
+  function retakeQuiz() {
+    setQuizAnswers({});
+    setQuizResult(null);
+    setQuizError(null);
+    setQuizAttemptError(null);
+    setQuizSessionSeed(`${activeModuleId ?? "module"}:${user?.id ?? "anonymous"}:${Date.now()}`);
+    setQuizAttemptStartedAt(new Date().toISOString());
   }
 
   function downloadCertificate() {
     if (!isCourseComplete || !course) return;
+    if (certificateUrl) {
+      window.open(certificateUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    if (!isDevBypass) {
+      setCertificateError("Certificate is still generating. Try again in a few seconds.");
+      return;
+    }
     const issuedDate = certificateIssuedAt
       ? new Date(certificateIssuedAt).toLocaleDateString()
       : new Date().toLocaleDateString();
@@ -446,6 +690,22 @@ export default function CourseDetailPage() {
               <p className="text-xs text-[#666666]">
                 You have finished all modules in this course.
               </p>
+              {certificateNumber && (
+                <p className="mt-1 text-[11px] text-[#2b4d24]">Certificate #{certificateNumber}</p>
+              )}
+              {certificateVerificationUrl && (
+                <p className="text-[11px] text-[#666666]">
+                  Verification:{" "}
+                  <a
+                    href={certificateVerificationUrl}
+                    className="text-[#2b4d24] underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {certificateVerificationUrl}
+                  </a>
+                </p>
+              )}
             </div>
             <Button variant="outline" onClick={downloadCompletionSummary}>
               <Download className="mr-2 h-4 w-4" />
@@ -548,7 +808,7 @@ export default function CourseDetailPage() {
                   />
                 </div>
               )}
-              {activeModuleType === "quiz" && activeQuizPayload && (
+              {activeModuleType === "quiz" && activeQuizSession && (
                 <div className="space-y-4 rounded-xl border border-[#c5ccc2]/50 bg-white/70 p-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-[#8b957b]">
@@ -558,29 +818,29 @@ export default function CourseDetailPage() {
                       Pass score: {activeModule?.passThreshold ?? 70}%
                     </p>
                   </div>
-                  {activeQuizPayload.questions.map((question, idx) => (
+                  {activeQuizSession.questions.map((question, idx) => (
                     <div key={question.id} className="space-y-2 rounded-lg border border-[#c5ccc2]/40 bg-white p-3">
                       <p className="text-sm font-medium text-[#1a1a1a]">
                         {idx + 1}. {question.prompt || "Untitled question"}
                       </p>
                       <div className="space-y-2">
-                        {question.options.map((option, optionIdx) => (
+                        {question.options.map((option) => (
                           <button
-                            key={`${question.id}-option-${optionIdx}`}
+                            key={option.id}
                             type="button"
                             onClick={() =>
                               setQuizAnswers((current) => ({
                                 ...current,
-                                [question.id]: optionIdx,
+                                [question.id]: option.id,
                               }))
                             }
                             className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
-                              quizAnswers[question.id] === optionIdx
+                              quizAnswers[question.id] === option.id
                                 ? "border-[#2b4d24] bg-[#2b4d24]/10 text-[#1a1a1a]"
                                 : "border-[#d8d8d8] bg-white text-[#666666]"
                             }`}
                           >
-                            {option || `Option ${optionIdx + 1}`}
+                            {option.label || "Option"}
                           </button>
                         ))}
                       </div>
@@ -590,6 +850,9 @@ export default function CourseDetailPage() {
                     <Button variant="outline" onClick={submitQuizAttempt} disabled={!activeModuleUnlocked}>
                       Submit Quiz
                     </Button>
+                    <Button variant="ghost" onClick={retakeQuiz} disabled={!activeModuleUnlocked}>
+                      Retake
+                    </Button>
                     {quizResult && (
                       <span className={quizResult.passed ? "text-sm text-[#2b4d24]" : "text-sm text-[#a36d4c]"}>
                         Score: {quizResult.scorePercent}% ({quizResult.correctAnswers}/{quizResult.totalQuestions}){" "}
@@ -598,6 +861,21 @@ export default function CourseDetailPage() {
                     )}
                   </div>
                   {quizError && <p className="text-xs text-[#a36d4c]">{quizError}</p>}
+                  {quizAttemptError && <p className="text-xs text-[#a36d4c]">{quizAttemptError}</p>}
+                  {quizAttempts.length > 0 && (
+                    <div className="rounded-lg border border-[#c5ccc2]/40 bg-white p-3">
+                      <p className="text-xs uppercase tracking-wide text-[#8b957b]">Attempt History</p>
+                      <div className="mt-2 space-y-1">
+                        {quizAttempts.slice(0, 5).map((attempt) => (
+                          <p key={attempt.id} className="text-xs text-[#666666]">
+                            Attempt {attempt.attemptNumber}: {attempt.scorePercent}%{" "}
+                            {attempt.passed ? "(Passed)" : "(Not passed)"} on{" "}
+                            {new Date(attempt.submittedAt).toLocaleString()}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <p className="text-sm text-[#666666]">

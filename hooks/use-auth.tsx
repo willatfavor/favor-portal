@@ -7,11 +7,13 @@ import { isDevBypass } from '@/lib/dev-mode';
 import {
   getActiveMockUserId,
   getMockUserById,
+  getMockRolesForUser,
   initMockStore,
   setActiveMockUserId,
   updateMockUser,
   recordActivity,
 } from '@/lib/mock-store';
+import { normalizeAdminRoles, resolveAdminPermissions } from '@/lib/admin/roles';
 
 interface AuthContextType {
   user: User | null;
@@ -34,7 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initMockStore();
     const activeId = getActiveMockUserId();
     const activeUser = getMockUserById(activeId);
-    setUser(activeUser);
+    if (activeUser) {
+      const roles = getMockRolesForUser(activeUser.id).map((entry) => entry.roleKey);
+      const permissions = resolveAdminPermissions(Boolean(activeUser.isAdmin), roles);
+      setUser({ ...activeUser, roles, permissions });
+    } else {
+      setUser(null);
+    }
     setIsLoading(false);
     if (activeUser) {
       recordActivity({
@@ -52,16 +60,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
+        const [{ data: userData, error }, { data: roleData }] = await Promise.all([
+          supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single(),
+          supabase
+            .from('user_roles')
+            .select('role_key')
+            .eq('user_id', session.user.id),
+        ]);
 
         if (error) {
           console.error('Error fetching user:', error);
           setUser(null);
         } else if (userData) {
+          const roles = normalizeAdminRoles((roleData ?? []).map((entry) => entry.role_key));
+          const permissions = resolveAdminPermissions(Boolean(userData.is_admin), roles);
           setUser({
             id: userData.id,
             email: userData.email,
@@ -74,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             rddAssignment: userData.rdd_assignment || undefined,
             avatarUrl: userData.avatar_url || undefined,
             isAdmin: userData.is_admin,
+            roles,
+            permissions,
             createdAt: userData.created_at,
             lastLogin: userData.last_login || undefined,
           });
@@ -131,23 +149,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setDevUser = (userId: string) => {
     if (!isDevBypass) return;
     setActiveMockUserId(userId);
-    const next = getMockUserById(userId);
-    setUser(next);
-    if (next) {
+    const nextUser = getMockUserById(userId);
+    if (nextUser) {
+      const roles = getMockRolesForUser(nextUser.id).map((entry) => entry.roleKey);
+      const permissions = resolveAdminPermissions(Boolean(nextUser.isAdmin), roles);
+      setUser({ ...nextUser, roles, permissions });
       recordActivity({
         id: `activity-${Date.now()}`,
         type: 'login',
-        userId: next.id,
+        userId: nextUser.id,
         createdAt: new Date().toISOString(),
         metadata: { source: 'dev' },
       });
+      return;
     }
+    setUser(null);
   };
 
   const updateDevUser = (updates: Partial<User>) => {
     if (!isDevBypass || !user) return;
     const updated = updateMockUser(user.id, updates);
-    if (updated) setUser(updated);
+    if (updated) {
+      const roles = getMockRolesForUser(updated.id).map((entry) => entry.roleKey);
+      const permissions = resolveAdminPermissions(Boolean(updated.isAdmin), roles);
+      setUser({ ...updated, roles, permissions });
+    }
   };
 
   return (

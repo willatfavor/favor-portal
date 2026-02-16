@@ -12,6 +12,9 @@ import type {
   PortalEvent,
   CommunicationTemplate,
   ActivityEvent,
+  UserRoleAssignment,
+  UserQuizAttempt,
+  CourseModuleEvent,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -27,6 +30,9 @@ import {
   MOCK_EVENTS,
   MOCK_TEMPLATES,
   MOCK_ACTIVITY,
+  MOCK_USER_ROLES,
+  MOCK_QUIZ_ATTEMPTS,
+  MOCK_MODULE_EVENTS,
 } from './mock-data';
 
 const STORAGE_KEYS = {
@@ -37,12 +43,15 @@ const STORAGE_KEYS = {
   modules: 'favor_mock_course_modules',
   progress: 'favor_mock_course_progress',
   notes: 'favor_mock_course_notes',
+  quizAttempts: 'favor_mock_quiz_attempts',
+  moduleEvents: 'favor_mock_module_events',
   grants: 'favor_mock_grants',
   preferences: 'favor_mock_preferences',
   content: 'favor_mock_content',
   events: 'favor_mock_events',
   templates: 'favor_mock_templates',
   activity: 'favor_mock_activity',
+  roles: 'favor_mock_roles',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -87,12 +96,15 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.modules, MOCK_COURSE_MODULES);
   seed(STORAGE_KEYS.progress, MOCK_PROGRESS);
   seed(STORAGE_KEYS.notes, MOCK_NOTES);
+  seed(STORAGE_KEYS.quizAttempts, MOCK_QUIZ_ATTEMPTS);
+  seed(STORAGE_KEYS.moduleEvents, MOCK_MODULE_EVENTS);
   seed(STORAGE_KEYS.grants, MOCK_GRANTS);
   seed(STORAGE_KEYS.preferences, MOCK_PREFERENCES);
   seed(STORAGE_KEYS.content, MOCK_CONTENT);
   seed(STORAGE_KEYS.events, MOCK_EVENTS);
   seed(STORAGE_KEYS.templates, MOCK_TEMPLATES);
   seed(STORAGE_KEYS.activity, MOCK_ACTIVITY);
+  seed(STORAGE_KEYS.roles, MOCK_USER_ROLES);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -253,6 +265,50 @@ export function upsertMockNote(note: CourseNote): void {
     notes.unshift(note);
   }
   setMockNotes(notes);
+}
+
+export function getMockRoles(): UserRoleAssignment[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.roles, MOCK_USER_ROLES);
+}
+
+export function getMockRolesForUser(userId: string | undefined): UserRoleAssignment[] {
+  if (!userId) return [];
+  return getMockRoles().filter((role) => role.userId === userId);
+}
+
+export function setMockRoles(roles: UserRoleAssignment[]): void {
+  setItem(STORAGE_KEYS.roles, roles);
+}
+
+export function getMockQuizAttempts(): UserQuizAttempt[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.quizAttempts, MOCK_QUIZ_ATTEMPTS);
+}
+
+export function getMockQuizAttemptsForModule(
+  userId: string | undefined,
+  moduleId: string | undefined
+): UserQuizAttempt[] {
+  if (!userId || !moduleId) return [];
+  return getMockQuizAttempts()
+    .filter((attempt) => attempt.userId === userId && attempt.moduleId === moduleId)
+    .sort((a, b) => b.attemptNumber - a.attemptNumber);
+}
+
+export function addMockQuizAttempt(attempt: UserQuizAttempt): void {
+  const attempts = getMockQuizAttempts();
+  setItem(STORAGE_KEYS.quizAttempts, [attempt, ...attempts]);
+}
+
+export function getMockModuleEvents(): CourseModuleEvent[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.moduleEvents, MOCK_MODULE_EVENTS);
+}
+
+export function recordMockModuleEvent(event: CourseModuleEvent): void {
+  const events = getMockModuleEvents();
+  setItem(STORAGE_KEYS.moduleEvents, [event, ...events]);
 }
 
 export function getMockGrants(): FoundationGrant[] {
