@@ -28,6 +28,12 @@ These are also enforced in CI via `.github/workflows/ci.yml`.
   - `user_course_certificates`
   - `/api/certificates/issue`
   - `/api/certificates/verify/[token]`
+  - `course_cohorts`
+  - `course_cohort_members`
+  - `course_discussion_threads`
+  - `course_discussion_replies`
+  - `/api/lms/cohorts`
+  - `/api/lms/discussions/threads*`
   - `/api/admin/lms/upload/*`
   - `/api/admin/lms/version`
   - `/api/admin/lms/analytics`
@@ -37,6 +43,7 @@ These are also enforced in CI via `.github/workflows/ci.yml`.
   - `database/migrations/001_initial_schema.sql`
   - `database/migrations/002_lms_production_upgrade.sql`
   - `database/migrations/003_lms_advanced_features.sql`
+  - `database/migrations/004_lms_community_and_cohorts.sql`
 - Any PR adding schema changes must include:
   - exact migration filename(s)
   - rollback strategy

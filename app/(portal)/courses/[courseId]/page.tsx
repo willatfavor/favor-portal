@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/portal/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getStreamUrl } from "@/lib/cloudflare/client";
+import { hasAdminPermission } from "@/lib/admin/roles";
 import {
   QuizResult,
   createQuizSession,
@@ -27,17 +29,34 @@ import {
   Clock,
   Download,
   Lock,
+  MessageSquare,
+  Pin,
   PlayCircle,
 } from "lucide-react";
 import {
+  addMockCohort,
+  addMockDiscussionReply,
+  addMockDiscussionThread,
   addMockQuizAttempt,
+  getMockCohortMembers,
+  getMockCohortsForCourse,
+  getMockDiscussionRepliesForThread,
+  getMockDiscussionThreadsForCourse,
   getMockNoteForModule,
   getMockQuizAttemptsForModule,
+  joinMockCohort,
+  leaveMockCohort,
   recordMockModuleEvent,
+  updateMockDiscussionThread,
   upsertMockNote,
 } from "@/lib/mock-store";
 import { isDevBypass } from "@/lib/dev-mode";
-import type { UserQuizAttempt } from "@/types";
+import type {
+  CourseCohort,
+  CourseDiscussionReply,
+  CourseDiscussionThread,
+  UserQuizAttempt,
+} from "@/types";
 
 function sanitizeFilename(value: string) {
   return value
@@ -57,6 +76,17 @@ function downloadTextFile(filename: string, content: string) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function formatDateTime(value: string | undefined | null) {
+  if (!value) return "TBD";
+  return new Date(value).toLocaleString();
+}
+
+let localIdCounter = 0;
+function nextLocalId(prefix: string) {
+  localIdCounter += 1;
+  return `${prefix}-${localIdCounter}`;
 }
 
 export default function CourseDetailPage() {
@@ -83,6 +113,22 @@ export default function CourseDetailPage() {
   const [certificateUrl, setCertificateUrl] = useState<string | null>(null);
   const [certificateVerificationUrl, setCertificateVerificationUrl] = useState<string | null>(null);
   const [certificateNumber, setCertificateNumber] = useState<string | null>(null);
+  const [courseCohorts, setCourseCohorts] = useState<CourseCohort[]>([]);
+  const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null);
+  const [cohortError, setCohortError] = useState<string | null>(null);
+  const [cohortLoading, setCohortLoading] = useState(false);
+  const [newCohortName, setNewCohortName] = useState("");
+  const [newCohortDescription, setNewCohortDescription] = useState("");
+  const [threadTitle, setThreadTitle] = useState("");
+  const [threadBody, setThreadBody] = useState("");
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const [discussionLoading, setDiscussionLoading] = useState(false);
+  const [discussionThreads, setDiscussionThreads] = useState<CourseDiscussionThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [repliesByThreadId, setRepliesByThreadId] = useState<Record<string, CourseDiscussionReply[]>>({});
+  const [replyDraftByThreadId, setReplyDraftByThreadId] = useState<Record<string, string>>({});
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const canManageLms = hasAdminPermission("lms:manage", user?.permissions);
 
   const course = useMemo(
     () => courses.find((c) => c.id === courseId),
@@ -134,6 +180,10 @@ export default function CourseDetailPage() {
   const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isCourseComplete = totalCount > 0 && completedCount === totalCount;
   const streamSubdomain = process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN;
+  const selectedCohort = useMemo(
+    () => courseCohorts.find((cohort) => cohort.id === selectedCohortId) ?? null,
+    [courseCohorts, selectedCohortId]
+  );
 
   useEffect(() => {
     if (courseModules.length === 0) return;
@@ -316,6 +366,430 @@ export default function CourseDetailPage() {
     void issueCertificate();
   }, [course, isCourseComplete, user]);
 
+  useEffect(() => {
+    async function loadCohorts() {
+      if (!courseId || !user?.id) {
+        setCourseCohorts([]);
+        setSelectedCohortId(null);
+        return;
+      }
+
+      setCohortError(null);
+      setCohortLoading(true);
+
+      if (isDevBypass) {
+        const cohortRows = getMockCohortsForCourse(courseId);
+        const memberRows = getMockCohortMembers();
+        const mapped = cohortRows.map((cohort) => {
+          const members = memberRows.filter((member) => member.cohortId === cohort.id);
+          const membership = members.find((member) => member.userId === user.id);
+          return {
+            ...cohort,
+            membersCount: members.length,
+            isMember: Boolean(membership),
+            membershipRole: membership?.membershipRole,
+          };
+        });
+        setCourseCohorts(mapped);
+        setSelectedCohortId((current) => {
+          if (current && mapped.some((cohort) => cohort.id === current)) return current;
+          const joined = mapped.find((cohort) => cohort.isMember);
+          return joined?.id ?? mapped[0]?.id ?? null;
+        });
+        setCohortLoading(false);
+        return;
+      }
+
+      const response = await fetch(`/api/lms/cohorts?courseId=${encodeURIComponent(courseId)}`);
+      const json = (await response.json()) as {
+        cohorts?: CourseCohort[];
+        error?: string;
+      };
+      if (!response.ok) {
+        setCohortError(json.error || "Unable to load cohorts right now.");
+        setCourseCohorts([]);
+        setSelectedCohortId(null);
+        setCohortLoading(false);
+        return;
+      }
+
+      const loaded = json.cohorts ?? [];
+      setCourseCohorts(loaded);
+      setSelectedCohortId((current) => {
+        if (current && loaded.some((cohort) => cohort.id === current)) return current;
+        const joined = loaded.find((cohort) => cohort.isMember);
+        return joined?.id ?? loaded[0]?.id ?? null;
+      });
+      setCohortLoading(false);
+    }
+
+    void loadCohorts();
+  }, [courseId, user?.id]);
+
+  useEffect(() => {
+    async function loadThreads() {
+      if (!courseId || !user?.id) {
+        setDiscussionThreads([]);
+        setThreadError(null);
+        return;
+      }
+
+      setDiscussionLoading(true);
+      setThreadError(null);
+
+      if (isDevBypass) {
+        setDiscussionThreads(getMockDiscussionThreadsForCourse(courseId, selectedCohortId));
+        setDiscussionLoading(false);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set("courseId", courseId);
+      if (selectedCohortId) {
+        params.set("cohortId", selectedCohortId);
+      }
+      const response = await fetch(`/api/lms/discussions/threads?${params.toString()}`);
+      const json = (await response.json()) as {
+        threads?: CourseDiscussionThread[];
+        error?: string;
+      };
+      if (!response.ok) {
+        setThreadError(json.error || "Unable to load community threads.");
+        setDiscussionThreads([]);
+        setDiscussionLoading(false);
+        return;
+      }
+
+      setDiscussionThreads(json.threads ?? []);
+      setDiscussionLoading(false);
+    }
+
+    void loadThreads();
+  }, [courseId, selectedCohortId, user?.id]);
+
+  useEffect(() => {
+    if (!activeThreadId) return;
+    const stillVisible = discussionThreads.some((thread) => thread.id === activeThreadId);
+    if (!stillVisible) {
+      setActiveThreadId(null);
+    }
+  }, [activeThreadId, discussionThreads]);
+
+  async function createCohort() {
+    if (!courseId || !user?.id || !canManageLms) return;
+    const name = newCohortName.trim();
+    if (!name) return;
+
+    setCohortError(null);
+
+    if (isDevBypass) {
+      const cohortId = nextLocalId("cohort");
+      addMockCohort({
+        id: cohortId,
+        courseId,
+        name,
+        description: newCohortDescription.trim() || undefined,
+        isActive: true,
+        createdBy: user.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        membersCount: 1,
+        isMember: true,
+        membershipRole: "instructor",
+      });
+      joinMockCohort(cohortId, user.id, "instructor");
+      setNewCohortName("");
+      setNewCohortDescription("");
+      const mapped = getMockCohortsForCourse(courseId).map((cohort) => {
+        const members = getMockCohortMembers().filter((member) => member.cohortId === cohort.id);
+        const membership = members.find((member) => member.userId === user.id);
+        return {
+          ...cohort,
+          membersCount: members.length,
+          isMember: Boolean(membership),
+          membershipRole: membership?.membershipRole,
+        };
+      });
+      setCourseCohorts(mapped);
+      setSelectedCohortId(cohortId);
+      return;
+    }
+
+    const response = await fetch("/api/lms/cohorts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "create",
+        courseId,
+        name,
+        description: newCohortDescription.trim() || undefined,
+      }),
+    });
+    const json = (await response.json()) as {
+      cohort?: CourseCohort;
+      error?: string;
+    };
+    if (!response.ok) {
+      setCohortError(json.error || "Unable to create cohort.");
+      return;
+    }
+
+    setNewCohortName("");
+    setNewCohortDescription("");
+    if (json.cohort?.id) {
+      setSelectedCohortId(json.cohort.id);
+    }
+    const refresh = await fetch(`/api/lms/cohorts?courseId=${encodeURIComponent(courseId)}`);
+    const refreshJson = (await refresh.json()) as { cohorts?: CourseCohort[] };
+    if (refresh.ok) {
+      setCourseCohorts(refreshJson.cohorts ?? []);
+    }
+  }
+
+  async function toggleCohortMembership(cohort: CourseCohort) {
+    if (!user?.id) return;
+    setCohortError(null);
+
+    if (isDevBypass) {
+      if (cohort.isMember) {
+        leaveMockCohort(cohort.id, user.id);
+      } else {
+        joinMockCohort(cohort.id, user.id);
+      }
+      const mapped = getMockCohortsForCourse(courseId).map((entry) => {
+        const members = getMockCohortMembers().filter((member) => member.cohortId === entry.id);
+        const membership = members.find((member) => member.userId === user.id);
+        return {
+          ...entry,
+          membersCount: members.length,
+          isMember: Boolean(membership),
+          membershipRole: membership?.membershipRole,
+        };
+      });
+      setCourseCohorts(mapped);
+      let nextSelected = selectedCohortId;
+      if (!cohort.isMember) {
+        nextSelected = cohort.id;
+        setSelectedCohortId(cohort.id);
+      } else if (selectedCohortId === cohort.id) {
+        const fallback = mapped.find((entry) => entry.isMember) ?? mapped[0];
+        nextSelected = fallback?.id ?? null;
+        setSelectedCohortId(nextSelected);
+      }
+      setDiscussionThreads(getMockDiscussionThreadsForCourse(courseId, nextSelected));
+      return;
+    }
+
+    const response = await fetch("/api/lms/cohorts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: cohort.isMember ? "leave" : "join",
+        cohortId: cohort.id,
+      }),
+    });
+    const json = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setCohortError(json.error || "Unable to update cohort membership.");
+      return;
+    }
+
+    const refresh = await fetch(`/api/lms/cohorts?courseId=${encodeURIComponent(courseId ?? "")}`);
+    const refreshJson = (await refresh.json()) as { cohorts?: CourseCohort[] };
+    if (refresh.ok) {
+      const refreshed = refreshJson.cohorts ?? [];
+      setCourseCohorts(refreshed);
+      if (!cohort.isMember) {
+        setSelectedCohortId(cohort.id);
+      } else if (selectedCohortId === cohort.id) {
+        const fallback = refreshed.find((entry) => entry.isMember) ?? refreshed[0];
+        setSelectedCohortId(fallback?.id ?? null);
+      }
+    }
+  }
+
+  async function createDiscussionThread() {
+    if (!courseId || !user?.id) return;
+    const title = threadTitle.trim();
+    const body = threadBody.trim();
+    if (!title || !body) return;
+
+    setThreadError(null);
+
+    if (isDevBypass) {
+      const thread: CourseDiscussionThread = {
+        id: nextLocalId("thread"),
+        courseId,
+        cohortId: selectedCohortId ?? undefined,
+        moduleId: activeModule?.id ?? undefined,
+        authorUserId: user.id,
+        authorName: `${user.firstName} ${user.lastName}`.trim(),
+        title,
+        body,
+        pinned: false,
+        locked: false,
+        replyCount: 0,
+        lastActivityAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      addMockDiscussionThread(thread);
+      setDiscussionThreads(getMockDiscussionThreadsForCourse(courseId, selectedCohortId));
+      setThreadTitle("");
+      setThreadBody("");
+      return;
+    }
+
+    const response = await fetch("/api/lms/discussions/threads", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        courseId,
+        cohortId: selectedCohortId,
+        moduleId: activeModule?.id,
+        title,
+        body,
+      }),
+    });
+    const json = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setThreadError(json.error || "Unable to publish thread.");
+      return;
+    }
+
+    setThreadTitle("");
+    setThreadBody("");
+
+    const params = new URLSearchParams();
+    params.set("courseId", courseId);
+    if (selectedCohortId) params.set("cohortId", selectedCohortId);
+    const refresh = await fetch(`/api/lms/discussions/threads?${params.toString()}`);
+    const refreshJson = (await refresh.json()) as { threads?: CourseDiscussionThread[] };
+    if (refresh.ok) {
+      setDiscussionThreads(refreshJson.threads ?? []);
+    }
+  }
+
+  async function toggleThreadModeration(threadId: string, updates: { pinned?: boolean; locked?: boolean }) {
+    if (!canManageLms) return;
+
+    if (isDevBypass) {
+      updateMockDiscussionThread(threadId, updates);
+      setDiscussionThreads((current) =>
+        current.map((thread) => (thread.id === threadId ? { ...thread, ...updates } : thread))
+      );
+      return;
+    }
+
+    const response = await fetch(`/api/lms/discussions/threads/${threadId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(updates),
+    });
+    const json = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setThreadError(json.error || "Unable to update thread settings.");
+      return;
+    }
+
+    setDiscussionThreads((current) =>
+      current.map((thread) => (thread.id === threadId ? { ...thread, ...updates } : thread))
+    );
+  }
+
+  async function loadThreadReplies(threadId: string) {
+    if (!user?.id) return;
+    setReplyError(null);
+
+    if (isDevBypass) {
+      setRepliesByThreadId((current) => ({
+        ...current,
+        [threadId]: getMockDiscussionRepliesForThread(threadId),
+      }));
+      return;
+    }
+
+    const response = await fetch(`/api/lms/discussions/threads/${threadId}/replies`);
+    const json = (await response.json()) as { replies?: CourseDiscussionReply[]; error?: string };
+    if (!response.ok) {
+      setReplyError(json.error || "Unable to load replies.");
+      return;
+    }
+    setRepliesByThreadId((current) => ({
+      ...current,
+      [threadId]: json.replies ?? [],
+    }));
+  }
+
+  async function addDiscussionReply(thread: CourseDiscussionThread) {
+    if (!user?.id) return;
+    const content = (replyDraftByThreadId[thread.id] ?? "").trim();
+    if (!content) return;
+    setReplyError(null);
+
+    if (isDevBypass) {
+      const reply: CourseDiscussionReply = {
+        id: nextLocalId("reply"),
+        threadId: thread.id,
+        authorUserId: user.id,
+        authorName: `${user.firstName} ${user.lastName}`.trim(),
+        body: content,
+        isInstructorReply: canManageLms,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      addMockDiscussionReply(reply);
+      setRepliesByThreadId((current) => ({
+        ...current,
+        [thread.id]: getMockDiscussionRepliesForThread(thread.id),
+      }));
+      setDiscussionThreads(getMockDiscussionThreadsForCourse(courseId, selectedCohortId));
+      setReplyDraftByThreadId((current) => ({ ...current, [thread.id]: "" }));
+      return;
+    }
+
+    const response = await fetch(`/api/lms/discussions/threads/${thread.id}/replies`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body: content }),
+    });
+    const json = (await response.json()) as {
+      reply?: CourseDiscussionReply;
+      error?: string;
+    };
+    if (!response.ok || !json.reply) {
+      setReplyError(json.error || "Unable to post reply.");
+      return;
+    }
+
+    setRepliesByThreadId((current) => ({
+      ...current,
+      [thread.id]: [...(current[thread.id] ?? []), json.reply!],
+    }));
+    setReplyDraftByThreadId((current) => ({ ...current, [thread.id]: "" }));
+    setDiscussionThreads((current) =>
+      current.map((entry) =>
+        entry.id === thread.id
+          ? {
+              ...entry,
+              replyCount: entry.replyCount + 1,
+              lastActivityAt: json.reply!.createdAt,
+            }
+          : entry
+      )
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -357,6 +831,9 @@ export default function CourseDetailPage() {
     activeModuleIndex >= 0 && activeModuleIndex < courseModules.length - 1
       ? courseModules[activeModuleIndex + 1]
       : undefined;
+  const cannotPostToSelectedCohort = Boolean(
+    selectedCohort && !selectedCohort.isMember && !canManageLms
+  );
 
   function saveNote() {
     if (!user || !activeModule) return;
@@ -958,6 +1435,264 @@ export default function CourseDetailPage() {
               </div>
               {noteError && <p className="text-xs text-[#a36d4c]">{noteError}</p>}
               {certificateError && <p className="text-xs text-[#a36d4c]">{certificateError}</p>}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-subtle border-0">
+            <CardContent className="p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-serif text-lg text-[#1a1a1a]">Cohort Community</h3>
+                  <p className="text-sm text-[#666666]">
+                    Discuss lessons with your cohort, ask questions, and share application ideas.
+                  </p>
+                </div>
+                {cohortLoading && <span className="text-xs text-[#999999]">Loading cohorts...</span>}
+              </div>
+
+              <div className="space-y-2">
+                {courseCohorts.length === 0 ? (
+                  <p className="text-xs text-[#999999]">
+                    No cohorts are available yet for this course.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {courseCohorts.map((cohort) => {
+                      const isSelected = selectedCohortId === cohort.id;
+                      return (
+                        <div
+                          key={cohort.id}
+                          className={`rounded-xl border p-3 ${
+                            isSelected ? "border-[#2b4d24]/40 bg-[#2b4d24]/5" : "border-[#c5ccc2]/40 bg-white/70"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <button
+                              type="button"
+                              className="text-left"
+                              onClick={() => setSelectedCohortId(cohort.id)}
+                            >
+                              <p className="text-sm font-medium text-[#1a1a1a]">{cohort.name}</p>
+                              <p className="text-xs text-[#999999]">
+                                {cohort.membersCount ?? 0} members
+                                {cohort.startsAt ? ` • Starts ${formatDateTime(cohort.startsAt)}` : ""}
+                              </p>
+                              {cohort.description && (
+                                <p className="mt-1 text-xs text-[#666666]">{cohort.description}</p>
+                              )}
+                            </button>
+                            <Button
+                              size="sm"
+                              variant={cohort.isMember ? "outline" : "default"}
+                              className={cohort.isMember ? "" : "bg-[#2b4d24] hover:bg-[#1a3a15]"}
+                              onClick={() => void toggleCohortMembership(cohort)}
+                            >
+                              {cohort.isMember ? "Leave" : "Join"}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {canManageLms && (
+                <div className="space-y-2 rounded-xl border border-[#2b4d24]/20 bg-[#2b4d24]/5 p-3">
+                  <p className="text-xs uppercase tracking-wide text-[#2b4d24]">Create Cohort</p>
+                  <Input
+                    value={newCohortName}
+                    onChange={(event) => setNewCohortName(event.target.value)}
+                    placeholder="Cohort name"
+                    className="bg-white/80"
+                  />
+                  <Textarea
+                    value={newCohortDescription}
+                    onChange={(event) => setNewCohortDescription(event.target.value)}
+                    placeholder="Cohort description (optional)"
+                    rows={2}
+                    className="bg-white/80"
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-[#2b4d24] hover:bg-[#1a3a15]"
+                    onClick={() => void createCohort()}
+                    disabled={!newCohortName.trim()}
+                  >
+                    Create Cohort
+                  </Button>
+                </div>
+              )}
+
+              <div className="space-y-2 rounded-xl border border-[#c5ccc2]/40 bg-white/70 p-3">
+                <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-[#8b957b]">
+                  <MessageSquare className="h-3.5 w-3.5" /> Start A Thread
+                </p>
+                <Input
+                  value={threadTitle}
+                  onChange={(event) => setThreadTitle(event.target.value)}
+                  placeholder="Thread title"
+                  className="bg-white/80"
+                />
+                <Textarea
+                  value={threadBody}
+                  onChange={(event) => setThreadBody(event.target.value)}
+                  placeholder="What do you want to discuss?"
+                  rows={3}
+                  className="bg-white/80"
+                />
+                {selectedCohort && (
+                  <p className="text-xs text-[#999999]">
+                    Posting to cohort: <span className="font-medium text-[#666666]">{selectedCohort.name}</span>
+                  </p>
+                )}
+                {cannotPostToSelectedCohort && (
+                  <p className="text-xs text-[#a36d4c]">Join the selected cohort to post in this space.</p>
+                )}
+                <Button
+                  size="sm"
+                  className="bg-[#2b4d24] hover:bg-[#1a3a15]"
+                  onClick={() => void createDiscussionThread()}
+                  disabled={!threadTitle.trim() || !threadBody.trim() || cannotPostToSelectedCohort}
+                >
+                  Post Thread
+                </Button>
+              </div>
+
+              {cohortError && <p className="text-xs text-[#a36d4c]">{cohortError}</p>}
+              {threadError && <p className="text-xs text-[#a36d4c]">{threadError}</p>}
+              {replyError && <p className="text-xs text-[#a36d4c]">{replyError}</p>}
+
+              <div className="space-y-3">
+                {discussionLoading ? (
+                  <p className="text-xs text-[#999999]">Loading discussions...</p>
+                ) : discussionThreads.length === 0 ? (
+                  <p className="text-xs text-[#999999]">
+                    No discussion threads yet. Start the first one for your cohort.
+                  </p>
+                ) : (
+                  discussionThreads.map((thread) => (
+                    <div
+                      key={thread.id}
+                      className="rounded-xl border border-[#c5ccc2]/40 bg-white/80 p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {thread.pinned && <Pin className="h-3.5 w-3.5 text-[#2b4d24]" />}
+                            <p className="text-sm font-medium text-[#1a1a1a]">{thread.title}</p>
+                            {thread.locked && (
+                              <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-[#a36d4c]">
+                                Locked
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#999999]">
+                            {thread.authorName ?? "Favor Partner"} • {formatDateTime(thread.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline" className="text-[10px]">
+                            {thread.replyCount} replies
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const nextActive = activeThreadId === thread.id ? null : thread.id;
+                              setActiveThreadId(nextActive);
+                              if (nextActive && !repliesByThreadId[thread.id]) {
+                                void loadThreadReplies(thread.id);
+                              }
+                            }}
+                          >
+                            {activeThreadId === thread.id ? "Hide Replies" : "View Replies"}
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm text-[#666666] whitespace-pre-wrap">{thread.body}</p>
+
+                      {canManageLms && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              void toggleThreadModeration(thread.id, { pinned: !thread.pinned })
+                            }
+                          >
+                            {thread.pinned ? "Unpin" : "Pin"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              void toggleThreadModeration(thread.id, { locked: !thread.locked })
+                            }
+                          >
+                            {thread.locked ? "Unlock" : "Lock"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {activeThreadId === thread.id && (
+                        <div className="mt-3 space-y-3 rounded-lg border border-[#c5ccc2]/35 bg-white/70 p-3">
+                          <div className="space-y-2">
+                            {(repliesByThreadId[thread.id] ?? []).length === 0 ? (
+                              <p className="text-xs text-[#999999]">No replies yet.</p>
+                            ) : (
+                              (repliesByThreadId[thread.id] ?? []).map((reply) => (
+                                <div key={reply.id} className="rounded-md border border-[#e9e9e9] bg-white p-2">
+                                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#999999]">
+                                    <span>{reply.authorName ?? "Favor Partner"}</span>
+                                    {reply.isInstructorReply && (
+                                      <Badge variant="outline" className="text-[10px] text-[#2b4d24]">
+                                        Instructor
+                                      </Badge>
+                                    )}
+                                    <span>{formatDateTime(reply.createdAt)}</span>
+                                  </div>
+                                  <p className="mt-1 text-xs text-[#666666] whitespace-pre-wrap">
+                                    {reply.body}
+                                  </p>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          <Textarea
+                            value={replyDraftByThreadId[thread.id] ?? ""}
+                            onChange={(event) =>
+                              setReplyDraftByThreadId((current) => ({
+                                ...current,
+                                [thread.id]: event.target.value,
+                              }))
+                            }
+                            placeholder={
+                              thread.locked && !canManageLms
+                                ? "Thread is locked by an instructor."
+                                : "Write a reply..."
+                            }
+                            rows={3}
+                            className="bg-white/85"
+                            disabled={thread.locked && !canManageLms}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void addDiscussionReply(thread)}
+                            disabled={
+                              !replyDraftByThreadId[thread.id]?.trim() ||
+                              (thread.locked && !canManageLms)
+                            }
+                          >
+                            Reply
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

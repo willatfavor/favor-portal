@@ -573,6 +573,147 @@ export interface Database {
         };
         Relationships: [];
       };
+      course_cohorts: {
+        Row: {
+          id: string;
+          course_id: string;
+          name: string;
+          description: string | null;
+          starts_at: string | null;
+          ends_at: string | null;
+          is_active: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          name: string;
+          description?: string | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          name?: string;
+          description?: string | null;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          is_active?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      course_cohort_members: {
+        Row: {
+          id: string;
+          cohort_id: string;
+          user_id: string;
+          membership_role: string;
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          cohort_id: string;
+          user_id: string;
+          membership_role?: string;
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          cohort_id?: string;
+          user_id?: string;
+          membership_role?: string;
+          joined_at?: string;
+        };
+        Relationships: [];
+      };
+      course_discussion_threads: {
+        Row: {
+          id: string;
+          course_id: string;
+          cohort_id: string | null;
+          module_id: string | null;
+          author_user_id: string;
+          title: string;
+          body: string;
+          pinned: boolean;
+          locked: boolean;
+          reply_count: number;
+          last_activity_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          cohort_id?: string | null;
+          module_id?: string | null;
+          author_user_id: string;
+          title: string;
+          body: string;
+          pinned?: boolean;
+          locked?: boolean;
+          reply_count?: number;
+          last_activity_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          cohort_id?: string | null;
+          module_id?: string | null;
+          author_user_id?: string;
+          title?: string;
+          body?: string;
+          pinned?: boolean;
+          locked?: boolean;
+          reply_count?: number;
+          last_activity_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      course_discussion_replies: {
+        Row: {
+          id: string;
+          thread_id: string;
+          author_user_id: string;
+          body: string;
+          is_instructor_reply: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          thread_id: string;
+          author_user_id: string;
+          body: string;
+          is_instructor_reply?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          thread_id?: string;
+          author_user_id?: string;
+          body?: string;
+          is_instructor_reply?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       foundation_grants: {
         Row: {
           id: string;

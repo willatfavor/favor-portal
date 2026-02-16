@@ -3,6 +3,7 @@
 ## What Is Now Implemented
 - Secure LMS schema extensions for production in `database/migrations/002_lms_production_upgrade.sql`.
 - Advanced LMS feature schema in `database/migrations/003_lms_advanced_features.sql`.
+- LMS community + cohorts schema in `database/migrations/004_lms_community_and_cohorts.sql`.
 - Role-aware LMS access policies in Postgres RLS (course/module reads are no longer globally readable by any authenticated user).
 - `users.is_admin` support for admin-gated LMS authoring.
 - Granular RBAC role model via `user_roles` and permission-aware admin UX.
@@ -21,6 +22,11 @@
   - `POST /api/admin/lms/upload/cloudflare` (Cloudflare Stream upload)
 - Admin analytics endpoint:
   - `GET /api/admin/lms/analytics`
+- LMS community APIs:
+  - `GET/POST /api/lms/cohorts`
+  - `GET/POST /api/lms/discussions/threads`
+  - `PATCH /api/lms/discussions/threads/[threadId]`
+  - `GET/POST /api/lms/discussions/threads/[threadId]/replies`
 - Admin course/module management page (`/admin/courses`) uses Supabase data in live mode and keeps dev bypass fallback.
 - Course detail page supports:
   - sequential unlock controlled by `courses.enforce_sequential`
@@ -28,6 +34,8 @@
   - in-module randomized quiz UI with persisted attempt history
   - certificate download button after full course completion (PDF)
   - certificate verification URL
+  - cohort participation per course
+  - discussion threads and instructor-pinned replies
   - Cloudflare Stream embed support when a stream ID + public subdomain are configured
   - downloadable completion summary + notes exports
 
@@ -36,6 +44,7 @@
    - `database/migrations/001_initial_schema.sql`
    - `database/migrations/002_lms_production_upgrade.sql`
    - `database/migrations/003_lms_advanced_features.sql`
+   - `database/migrations/004_lms_community_and_cohorts.sql`
 2. Refresh generated DB types if your workflow regenerates `types/supabase.ts`.
 3. Set env vars:
    - `NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN` (client embed)
@@ -54,6 +63,7 @@
 - SKY identity mapping must continue resolving users to the same `users.id` model used by Supabase auth.
 - Course progress and notes are safe to keep local to Supabase while SKY remains the source of truth for donor/constituent data.
 - LMS certificates, quiz attempts, and module analytics are intentionally kept in Supabase and do not require SKY ownership.
+- LMS cohorts, memberships, and community threads/replies are intentionally kept in Supabase and do not require SKY ownership.
 
 ## Follow-Ups (Optional Enhancements)
 - Add certificate cryptographic signing/QR verification if external auditors require tamper evidence.

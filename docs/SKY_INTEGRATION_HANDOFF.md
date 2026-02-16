@@ -25,6 +25,7 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
   - certificate verification is public via `/certificates/[token]` and `GET /api/certificates/verify/[token]`
   - quiz modules use `course_modules.quiz_payload` with randomized sessions and persisted attempts in `user_quiz_attempts`
   - analytics eventing writes to `course_module_events`
+  - cohorts and discussion community data are stored in `course_cohorts`, `course_cohort_members`, `course_discussion_threads`, and `course_discussion_replies`
 - Admin upload routes are already scaffolded:
   - `POST /api/admin/lms/upload/resource`
   - `POST /api/admin/lms/upload/cloudflare`
@@ -55,6 +56,7 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - `database/migrations/001_initial_schema.sql`
 - `database/migrations/002_lms_production_upgrade.sql`
 - `database/migrations/003_lms_advanced_features.sql`
+- `database/migrations/004_lms_community_and_cohorts.sql`
 
 ## SKY Developer PR Sequence
 1. Define identity mapping between Supabase auth user and SKY constituent.
@@ -83,6 +85,11 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - Quiz pass/fail grading runs client-side from `quiz_payload`, records per-attempt history in `user_quiz_attempts`, and marks module complete on pass.
 - Course completion certificate issuance is server-side via `POST /api/certificates/issue` (PDF generated and stored).
 - Upload APIs are permission-gated by `lms:manage` (resolved from `users.is_admin` and/or `user_roles`).
+- Cohort community flows run through LMS APIs:
+  - `GET/POST /api/lms/cohorts`
+  - `GET/POST /api/lms/discussions/threads`
+  - `PATCH /api/lms/discussions/threads/[threadId]`
+  - `GET/POST /api/lms/discussions/threads/[threadId]/replies`
 
 ### LMS Follow-Ups for Integration Developer
 1. Wire real video watch telemetry (Cloudflare Stream events or player callbacks) into `watch_time_seconds` updates.
