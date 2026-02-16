@@ -9,7 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export function MagicLinkForm() {
+interface MagicLinkFormProps {
+  scope?: 'portal' | 'admin';
+  redirectTo?: string;
+  title?: string;
+  description?: string;
+  sentTitle?: string;
+  sentDescription?: string;
+}
+
+export function MagicLinkForm({
+  scope = 'portal',
+  redirectTo,
+  title = 'Partner Portal',
+  description = 'Enter your email to receive a secure login link',
+  sentTitle = 'Check Your Email',
+  sentDescription,
+}: MagicLinkFormProps) {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -31,13 +47,17 @@ export function MagicLinkForm() {
       const response = await fetch('/api/auth/magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          scope,
+          redirectTo,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error('Failed to send magic link');
+        throw new Error(data?.error || 'Failed to send magic link');
       }
 
       if (data?.devLink) {
@@ -61,10 +81,11 @@ export function MagicLinkForm() {
             <Mail className="h-6 w-6 text-[#2b4d24]" />
           </div>
           <CardTitle className="font-['Cormorant_Garamond'] text-2xl font-normal text-[#1a1a1a]">
-            Check Your Email
+            {sentTitle}
           </CardTitle>
           <CardDescription className="text-[#666666]">
-            We sent a magic link to <strong>{email}</strong>. Click the link in the email to access your portal.
+            {sentDescription ??
+              <>We sent a magic link to <strong>{email}</strong>. Click the link in the email to continue.</>}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,10 +113,10 @@ export function MagicLinkForm() {
     <Card className="w-full max-w-md border-[#c5ccc2]">
       <CardHeader className="text-center">
         <CardTitle className="font-['Cormorant_Garamond'] text-3xl font-normal text-[#1a1a1a]">
-          Partner Portal
+          {title}
         </CardTitle>
         <CardDescription className="text-[#666666]">
-          Enter your email to receive a secure login link
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent>

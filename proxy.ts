@@ -12,6 +12,7 @@ const isDevBypass = process.env.NODE_ENV !== 'production' && !isSupabaseConfigur
 // Define public routes that don't require authentication
 const publicRoutes = [
   '/login',
+  '/admin/login',
   '/verify',
   '/api/auth/magic-link',
   '/api/auth/verify',
@@ -59,6 +60,48 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname.startsWith('/admin')) {
+    const supabase = await createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      const loginUrl = new URL('/admin/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const [{ data: userRow, error: userError }, { data: roleRows }] = await Promise.all([
+      supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single(),
+      supabase
+        .from('user_roles')
+        .select('role_key')
+        .eq('user_id', session.user.id),
+    ]);
+
+    if (userError) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    const roles = (roleRows ?? []).map((row) => row.role_key);
+    const permissions = resolveAdminPermissions(Boolean(userRow?.is_admin), roles);
+    if (!hasAdminPermission('admin:access', permissions)) {
+      const adminLoginUrl = new URL('/admin/login', request.url);
+      adminLoginUrl.searchParams.set('error', 'unauthorized');
+      return NextResponse.redirect(adminLoginUrl);
+    }
+
+    const required = requiredAdminPermission(pathname);
+    if (!hasAdminPermission(required, permissions)) {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
+
+    return NextResponse.next();
+  }
+
   // For portal routes, check authentication
   if (pathname.startsWith('/dashboard') || 
       pathname.startsWith('/giving') || 
@@ -68,8 +111,7 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/foundation') ||
       pathname.startsWith('/church') ||
       pathname.startsWith('/daf') ||
-      pathname.startsWith('/ambassador') ||
-      pathname.startsWith('/admin')) {
+      pathname.startsWith('/ambassador')) {
     
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
@@ -81,34 +123,6 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (pathname.startsWith('/admin')) {
-      const [{ data: userRow, error: userError }, { data: roleRows }] = await Promise.all([
-        supabase
-          .from('users')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single(),
-        supabase
-          .from('user_roles')
-          .select('role_key')
-          .eq('user_id', session.user.id),
-      ]);
-
-      if (userError) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-
-      const roles = (roleRows ?? []).map((row) => row.role_key);
-      const permissions = resolveAdminPermissions(Boolean(userRow?.is_admin), roles);
-      if (!hasAdminPermission('admin:access', permissions)) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-
-      const required = requiredAdminPermission(pathname);
-      if (!hasAdminPermission(required, permissions)) {
-        return NextResponse.redirect(new URL('/admin', request.url));
-      }
-    }
   }
 
   return NextResponse.next();

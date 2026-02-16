@@ -48,6 +48,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return prefix?.href;
   }, [pathname, visibleNav]);
 
+  if (pathname === "/admin/login") {
+    return <main id="main-content">{children}</main>;
+  }
+
   if (!canAccessAdmin) {
     return (
       <div id="main-content" className="min-h-screen bg-transparent flex items-center justify-center px-4">
@@ -66,6 +70,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Link href="/dashboard">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Portal
               </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/login">Admin Sign-In</Link>
             </Button>
             {isDev && (
               <Button

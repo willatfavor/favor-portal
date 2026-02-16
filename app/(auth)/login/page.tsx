@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { MagicLinkForm } from '@/components/auth/magic-link-form';
 import { APP_CONFIG } from '@/lib/constants';
 
@@ -22,6 +23,9 @@ export default function LoginPage() {
           </p>
         </div>
         <MagicLinkForm />
+        <p className="mt-4 text-center text-xs text-[#666666]">
+          Staff/admin? <Link href="/admin/login" className="text-[#2b4d24] underline">Use admin sign-in</Link>
+        </p>
       </div>
     </div>
   );

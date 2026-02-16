@@ -27,6 +27,7 @@ The **Favor International Partner Portal** is a multi-constituent experience des
   - `/api/admin/overview`
 - **Dev Bypass Behavior:** Mock data paths are active when Supabase environment variables are not configured. Server-side mock storage is now stateful in-process for API smoke tests.
 - **Auth Hardening:** Magic link and verification endpoints include request rate limiting with `429` + `Retry-After`.
+- **Admin Auth Separation:** Dedicated admin sign-in route (`/admin/login`) now uses admin-scoped magic-link verification and separate middleware redirect behavior for `/admin/*`.
 - **Observability:** Structured logging helper (`lib/logger.ts`) is now used in critical auth and giving routes plus new admin/content/support APIs.
 - **Accessibility Baseline:** Skip-to-content link, global `:focus-visible` styles, and notification `aria-live` updates are in place.
 - **Loading UX:** Shared skeleton loaders now replace plain "Loading..." placeholders across portal pages.
@@ -72,6 +73,7 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 
 ### 🔐 Authentication & Profile
 - **Magic Link Auth:** Passwordless email authentication via Supabase Auth + Resend.
+- **Admin-Scoped Magic Links:** Admin logins are initiated at `/admin/login` and verified with `admin` scope before granting admin-route access.
 - **Constituent Type Routing:** Dynamic portal experiences tailored to the user's role.
 - **Communication Preferences:** Granular control over Email, SMS, and Mail notifications.
 
