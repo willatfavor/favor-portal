@@ -15,6 +15,10 @@ import type {
   UserRoleAssignment,
   UserQuizAttempt,
   CourseModuleEvent,
+  CourseCohort,
+  CourseCohortMember,
+  CourseDiscussionThread,
+  CourseDiscussionReply,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -33,6 +37,10 @@ import {
   MOCK_USER_ROLES,
   MOCK_QUIZ_ATTEMPTS,
   MOCK_MODULE_EVENTS,
+  MOCK_COHORTS,
+  MOCK_COHORT_MEMBERS,
+  MOCK_DISCUSSION_THREADS,
+  MOCK_DISCUSSION_REPLIES,
 } from './mock-data';
 
 const STORAGE_KEYS = {
@@ -52,6 +60,10 @@ const STORAGE_KEYS = {
   templates: 'favor_mock_templates',
   activity: 'favor_mock_activity',
   roles: 'favor_mock_roles',
+  cohorts: 'favor_mock_course_cohorts',
+  cohortMembers: 'favor_mock_course_cohort_members',
+  discussionThreads: 'favor_mock_discussion_threads',
+  discussionReplies: 'favor_mock_discussion_replies',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -105,6 +117,10 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.templates, MOCK_TEMPLATES);
   seed(STORAGE_KEYS.activity, MOCK_ACTIVITY);
   seed(STORAGE_KEYS.roles, MOCK_USER_ROLES);
+  seed(STORAGE_KEYS.cohorts, MOCK_COHORTS);
+  seed(STORAGE_KEYS.cohortMembers, MOCK_COHORT_MEMBERS);
+  seed(STORAGE_KEYS.discussionThreads, MOCK_DISCUSSION_THREADS);
+  seed(STORAGE_KEYS.discussionReplies, MOCK_DISCUSSION_REPLIES);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -309,6 +325,165 @@ export function getMockModuleEvents(): CourseModuleEvent[] {
 export function recordMockModuleEvent(event: CourseModuleEvent): void {
   const events = getMockModuleEvents();
   setItem(STORAGE_KEYS.moduleEvents, [event, ...events]);
+}
+
+export function getMockCohorts(): CourseCohort[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.cohorts, MOCK_COHORTS);
+}
+
+export function setMockCohorts(cohorts: CourseCohort[]): void {
+  setItem(STORAGE_KEYS.cohorts, cohorts);
+}
+
+export function getMockCohortsForCourse(courseId: string | undefined): CourseCohort[] {
+  if (!courseId) return [];
+  return getMockCohorts().filter((cohort) => cohort.courseId === courseId && cohort.isActive);
+}
+
+export function addMockCohort(cohort: CourseCohort): void {
+  const cohorts = getMockCohorts();
+  setMockCohorts([cohort, ...cohorts]);
+}
+
+export function getMockCohortMembers(): CourseCohortMember[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.cohortMembers, MOCK_COHORT_MEMBERS);
+}
+
+export function setMockCohortMembers(members: CourseCohortMember[]): void {
+  setItem(STORAGE_KEYS.cohortMembers, members);
+}
+
+export function getMockCohortMembersForCohort(cohortId: string | undefined): CourseCohortMember[] {
+  if (!cohortId) return [];
+  return getMockCohortMembers().filter((member) => member.cohortId === cohortId);
+}
+
+export function getMockCohortMembershipForUser(
+  cohortId: string | undefined,
+  userId: string | undefined
+): CourseCohortMember | null {
+  if (!cohortId || !userId) return null;
+  return (
+    getMockCohortMembers().find((member) => member.cohortId === cohortId && member.userId === userId) ??
+    null
+  );
+}
+
+export function joinMockCohort(
+  cohortId: string,
+  userId: string,
+  membershipRole: CourseCohortMember['membershipRole'] = 'learner'
+): CourseCohortMember {
+  const existing = getMockCohortMembershipForUser(cohortId, userId);
+  if (existing) return existing;
+
+  const member: CourseCohortMember = {
+    id: `cohort-member-${Date.now()}`,
+    cohortId,
+    userId,
+    membershipRole,
+    joinedAt: new Date().toISOString(),
+  };
+
+  const members = getMockCohortMembers();
+  setMockCohortMembers([member, ...members]);
+
+  const cohorts = getMockCohorts().map((cohort) =>
+    cohort.id === cohortId
+      ? { ...cohort, membersCount: (cohort.membersCount ?? 0) + 1, updatedAt: new Date().toISOString() }
+      : cohort
+  );
+  setMockCohorts(cohorts);
+
+  return member;
+}
+
+export function leaveMockCohort(cohortId: string, userId: string): void {
+  const before = getMockCohortMembers();
+  const after = before.filter((member) => !(member.cohortId === cohortId && member.userId === userId));
+  if (before.length === after.length) return;
+  setMockCohortMembers(after);
+
+  const cohorts = getMockCohorts().map((cohort) =>
+    cohort.id === cohortId
+      ? {
+          ...cohort,
+          membersCount: Math.max(0, (cohort.membersCount ?? 0) - 1),
+          updatedAt: new Date().toISOString(),
+        }
+      : cohort
+  );
+  setMockCohorts(cohorts);
+}
+
+export function getMockDiscussionThreads(): CourseDiscussionThread[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.discussionThreads, MOCK_DISCUSSION_THREADS);
+}
+
+export function setMockDiscussionThreads(threads: CourseDiscussionThread[]): void {
+  setItem(STORAGE_KEYS.discussionThreads, threads);
+}
+
+export function getMockDiscussionThreadsForCourse(
+  courseId: string | undefined,
+  cohortId: string | null | undefined
+): CourseDiscussionThread[] {
+  if (!courseId) return [];
+  return getMockDiscussionThreads()
+    .filter((thread) => {
+      if (thread.courseId !== courseId) return false;
+      if (!cohortId) return thread.cohortId === undefined || thread.cohortId === null;
+      return !thread.cohortId || thread.cohortId === cohortId;
+    })
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return a.lastActivityAt > b.lastActivityAt ? -1 : 1;
+    });
+}
+
+export function addMockDiscussionThread(thread: CourseDiscussionThread): void {
+  const threads = getMockDiscussionThreads();
+  setMockDiscussionThreads([thread, ...threads]);
+}
+
+export function updateMockDiscussionThread(
+  threadId: string,
+  updates: Partial<CourseDiscussionThread>
+): void {
+  const threads = getMockDiscussionThreads().map((thread) =>
+    thread.id === threadId ? { ...thread, ...updates, updatedAt: new Date().toISOString() } : thread
+  );
+  setMockDiscussionThreads(threads);
+}
+
+export function getMockDiscussionReplies(): CourseDiscussionReply[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.discussionReplies, MOCK_DISCUSSION_REPLIES);
+}
+
+export function setMockDiscussionReplies(replies: CourseDiscussionReply[]): void {
+  setItem(STORAGE_KEYS.discussionReplies, replies);
+}
+
+export function getMockDiscussionRepliesForThread(threadId: string | undefined): CourseDiscussionReply[] {
+  if (!threadId) return [];
+  return getMockDiscussionReplies()
+    .filter((reply) => reply.threadId === threadId)
+    .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+}
+
+export function addMockDiscussionReply(reply: CourseDiscussionReply): void {
+  const replies = getMockDiscussionReplies();
+  setMockDiscussionReplies([...replies, reply]);
+
+  const threadReplies = getMockDiscussionRepliesForThread(reply.threadId);
+  updateMockDiscussionThread(reply.threadId, {
+    replyCount: threadReplies.length,
+    lastActivityAt: reply.createdAt,
+  });
 }
 
 export function getMockGrants(): FoundationGrant[] {
