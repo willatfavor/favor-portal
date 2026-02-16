@@ -214,7 +214,7 @@ export const MOCK_COURSES: Course[] = [
     id: 'course-africa',
     title: 'Africa Programs Overview',
     description: 'A guided tour of Favor International\'s four core program areas across Africa.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1489493173507-55f0239eaf16?q=80&w=1200&auto=format&fit=crop',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1200&auto=format&fit=crop',
     accessLevel: 'partner',
     sortOrder: 1,
     createdAt: '2025-10-01T12:00:00Z',

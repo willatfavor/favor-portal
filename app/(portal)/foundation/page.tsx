@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Building2, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useGrants } from '@/hooks/use-grants';
@@ -70,7 +71,11 @@ export default function FoundationDashboardPage() {
 
         <TabsContent value="grants" className="mt-6">
           {isLoading ? (
-            <p>Loading grants...</p>
+            <div className="space-y-3" aria-hidden="true">
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </div>
           ) : grants.length === 0 ? (
             <Card className="p-8 text-center">
               <p className="text-gray-500">No grants found.</p>

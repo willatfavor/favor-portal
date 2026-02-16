@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { formatCurrency } from "@/lib/utils";
 import { getGivingTier } from "@/lib/constants";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 
 export default function ProfilePage() {
   const { user, isLoading, updateDevUser, isDev } = useAuth();
@@ -27,11 +28,7 @@ export default function ProfilePage() {
   const val = (key: string, fallback: string) => form[key] ?? fallback;
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading profile...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   const initials = user
@@ -93,6 +90,7 @@ export default function ProfilePage() {
                 <button
                   className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full glass-inset glass-transition hover:bg-white/70"
                   onClick={() => toast.info("Photo upload coming soon")}
+                  aria-label="Upload profile photo"
                 >
                   <Camera className="h-3.5 w-3.5 text-[#666666]" />
                 </button>
@@ -131,30 +129,30 @@ export default function ProfilePage() {
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={val("firstName", user?.firstName ?? "")} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
+                  <Label htmlFor="profile-first-name">First Name</Label>
+                  <Input id="profile-first-name" value={val("firstName", user?.firstName ?? "")} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={val("lastName", user?.lastName ?? "")} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
+                  <Label htmlFor="profile-last-name">Last Name</Label>
+                  <Input id="profile-last-name" value={val("lastName", user?.lastName ?? "")} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={val("email", user?.email ?? "")} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" type="email" value={val("email", user?.email ?? "")} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input type="tel" value={val("phone", user?.phone ?? "")} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Add phone number" />
+                <Label htmlFor="profile-phone">Phone</Label>
+                <Input id="profile-phone" type="tel" value={val("phone", user?.phone ?? "")} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Add phone number" />
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label>Address</Label>
-                <Input placeholder="Street address" value={val("street", "")} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+                <Label htmlFor="profile-street">Address</Label>
+                <Input id="profile-street" placeholder="Street address" value={val("street", "")} onChange={(e) => setForm({ ...form, street: e.target.value })} />
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <Input placeholder="City" value={val("city", "")} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                  <Input placeholder="State" value={val("state", "")} onChange={(e) => setForm({ ...form, state: e.target.value })} />
-                  <Input placeholder="ZIP" value={val("zip", "")} onChange={(e) => setForm({ ...form, zip: e.target.value })} />
+                  <Input id="profile-city" placeholder="City" value={val("city", "")} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  <Input id="profile-state" placeholder="State" value={val("state", "")} onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                  <Input id="profile-zip" placeholder="ZIP" value={val("zip", "")} onChange={(e) => setForm({ ...form, zip: e.target.value })} />
                 </div>
               </div>
               <div className="flex gap-2">

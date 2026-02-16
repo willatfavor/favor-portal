@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/portal/empty-state";
 import { SectionHeader } from "@/components/portal/section-header";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { recordActivity } from "@/lib/mock-store";
 import { isDevBypass } from "@/lib/dev-mode";
 import { ContentItem } from "@/types";
@@ -172,11 +173,7 @@ export default function ContentDetailPage() {
   }, [item, accessibleItems]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading content...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   if (!item) {
@@ -304,7 +301,6 @@ export default function ContentDetailPage() {
               fill
               sizes="(max-width: 1024px) 100vw, 1024px"
               className="object-cover"
-              unoptimized
             />
           </div>
         )}

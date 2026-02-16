@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -140,11 +141,7 @@ export default function ImpactPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading your impact...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (

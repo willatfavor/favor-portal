@@ -12,6 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { canAccessCourse } from "@/lib/constants";
 
 export default function CoursesPage() {
@@ -20,11 +21,7 @@ export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading courses...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   const publishedCourses = courses.filter((course) => course.status !== "draft");
@@ -52,10 +49,14 @@ export default function CoursesPage() {
       .filter((module) => module.courseId === courseId)
       .sort((a, b) => a.sortOrder - b.sortOrder);
     const totalCount = courseModules.length;
+    const totalDurationSeconds = courseModules.reduce(
+      (sum, module) => sum + (module.durationSeconds || 0),
+      0
+    );
     const completedCount = courseModules.filter(
       (module) => progressMap.get(module.id)?.completed
     ).length;
-    return { courseModules, totalCount, completedCount };
+    return { courseModules, totalCount, completedCount, totalDurationSeconds };
   };
 
   const completedCourses = accessibleCourses.filter((course) => {
@@ -132,13 +133,14 @@ export default function CoursesPage() {
           {filteredCourses.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredCourses.map((course) => {
-                const { completedCount, totalCount } = courseProgressSummary(course.id);
+                const { completedCount, totalCount, totalDurationSeconds } = courseProgressSummary(course.id);
                 return (
                   <CourseCard
                     key={course.id}
                     course={course}
                     progress={completedCount}
                     totalModules={totalCount}
+                    totalDurationSeconds={totalDurationSeconds}
                   />
                 );
               })}

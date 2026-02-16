@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Download, Calendar, FileText } from "lucide-react";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -35,11 +36,7 @@ export default function GivingHistoryPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading your giving history...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   const allGifts = gifts;

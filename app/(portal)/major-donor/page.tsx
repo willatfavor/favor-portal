@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
 import { formatCurrency } from "@/lib/utils";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { FileText, Phone, Star, TrendingUp } from "lucide-react";
 
 export default function MajorDonorPage() {
@@ -21,11 +22,7 @@ export default function MajorDonorPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading donor insights...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (

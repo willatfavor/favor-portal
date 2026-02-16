@@ -15,7 +15,6 @@ export default function LoginPage() {
             width={240}
             height={64}
             className="mx-auto mb-4 h-16 w-auto"
-            unoptimized
             priority
           />
           <p className="text-[#666666] font-light">

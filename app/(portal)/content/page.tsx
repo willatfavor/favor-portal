@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { SectionHeader } from "@/components/portal/section-header";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import {
   FileText,
   Search,
@@ -103,13 +104,7 @@ function getRecentlyViewed(): string[] {
 
 export default function ContentPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-64 items-center justify-center">
-          <div className="text-[#666666]">Loading content...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PortalPageSkeleton />}>
       <ContentPageContent />
     </Suspense>
   );
@@ -228,11 +223,7 @@ function ContentPageContent() {
   }, [allAccessible]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading content...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (
@@ -328,7 +319,6 @@ function ContentPageContent() {
                         fill
                         sizes="(max-width: 768px) 100vw, 33vw"
                         className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        unoptimized
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -571,7 +561,6 @@ function ContentGridCard({
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            unoptimized
           />
         </div>
       )}
@@ -671,7 +660,6 @@ function ContentListCard({
               width={112}
               height={80}
               className="h-full w-full object-cover"
-              unoptimized
             />
           </div>
         ) : (

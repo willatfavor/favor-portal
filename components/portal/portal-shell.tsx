@@ -112,7 +112,6 @@ export function PortalShell({ children }: PortalShellProps) {
                       width={126}
                       height={28}
                       className="h-7 w-auto"
-                      unoptimized
                     />
                   </SheetTitle>
                 </SheetHeader>
@@ -160,7 +159,6 @@ export function PortalShell({ children }: PortalShellProps) {
                 width={108}
                 height={24}
                 className="h-6 w-auto"
-                unoptimized
               />
             </Link>
 
@@ -235,7 +233,7 @@ export function PortalShell({ children }: PortalShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
         {children}
       </main>
 

@@ -12,19 +12,14 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
 import { GiveNowDialog } from "@/components/portal/give-now-dialog";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 
 export default function GivingPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-64 items-center justify-center">
-          <div className="text-[#666666]">Loading your giving information...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PortalPageSkeleton />}>
       <GivingPageContent />
     </Suspense>
   );
@@ -40,11 +35,7 @@ function GivingPageContent() {
   const viewParam = (searchParams.get("view") ?? "").toLowerCase();
 
   if (isLoading || isGrantsLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading your giving information...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   const mostRecentGift = gifts[0];

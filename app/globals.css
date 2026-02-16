@@ -101,6 +101,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-montserrat), system-ui, sans-serif;
@@ -113,6 +117,23 @@
     font-family: var(--font-cormorant), Georgia, serif;
     font-weight: 500;
   }
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  border-radius: 0.5rem;
+  background: #2b4d24;
+  color: #FFFEF9;
+  padding: 0.5rem 0.75rem;
+  transform: translateY(-180%);
+  transition: transform 150ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 /* ─── Motion Tokens ─── */

@@ -16,12 +16,20 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 - **Frontend Modules:** `admin`, `content`, `lms`, and `giving` routes are implemented and included in smoke coverage.
 - **Backend APIs:** Key giving and LMS/admin auth-protected routes are validated for expected behaviors (success or `401` when unauthenticated).
 - **Dev Bypass Behavior:** Mock data paths are active when Supabase environment variables are not configured. Server-side mock storage is now stateful in-process for API smoke tests.
+- **Auth Hardening:** Magic link and verification endpoints include request rate limiting with `429` + `Retry-After`.
+- **Accessibility Baseline:** Skip-to-content link, global `:focus-visible` styles, and notification `aria-live` updates are in place.
+- **Loading UX:** Shared skeleton loaders now replace plain "Loading..." placeholders across portal pages.
+- **Image Optimization:** `next/image` now uses configured remote host allowlist (`images.unsplash.com`, `storage.googleapis.com`, Cloudflare Stream domains) without `unoptimized` flags.
+- **Dashboard Maintainability:** Role-specific dashboard logic is extracted into `lib/dashboard/role-experience.ts`.
 
 ### Latest Validation Snapshot
 - `npm run lint` -> pass (no warnings/errors)
 - `npm run typecheck` -> pass
 - `npm run build` -> pass
 - `npm run test:e2e` -> pass (`19` tests)
+
+### Theming Note
+- Dark mode is not yet enabled. Current implementation targets the Favor brand's light visual system; dark mode is planned as a future enhancement.
 
 ---
 

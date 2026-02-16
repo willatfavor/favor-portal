@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { createClient } from "@/lib/supabase/client";
 import { getStreamUrl } from "@/lib/cloudflare/client";
 import { hasAdminPermission } from "@/lib/admin/roles";
@@ -791,11 +792,7 @@ export default function CourseDetailPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading course...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   if (!course) {

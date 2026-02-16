@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Wallet, 
   FileText, 
@@ -111,7 +112,11 @@ export default function DafDashboardPage() {
 
         <TabsContent value="grants" className="mt-6">
           {isLoading ? (
-            <p className="text-[#666666]">Loading grants...</p>
+            <div className="space-y-3" aria-hidden="true">
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+            </div>
           ) : dafGifts.length === 0 ? (
             <Card className="p-8 text-center">
               <Wallet className="mx-auto h-12 w-12 text-[#e5e5e0] mb-4" />

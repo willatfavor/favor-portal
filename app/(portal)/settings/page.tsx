@@ -19,6 +19,7 @@ import { Mail, MessageSquare, Bell, Save, Check, Download } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { getLocalSettings, saveLocalSettings } from "@/lib/local-storage";
 
 export default function SettingsPage() {
@@ -112,11 +113,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading settings...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (
@@ -174,20 +171,20 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium">Enable SMS</Label>
+                  <Label htmlFor="settings-sms-enabled" className="text-sm font-medium">Enable SMS</Label>
                   <p className="text-xs text-[#666666]">Allow text message notifications.</p>
                 </div>
-                <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
+                <Switch id="settings-sms-enabled" checked={smsEnabled} onCheckedChange={setSmsEnabled} />
               </div>
               {smsEnabled && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Gift Confirmations</Label>
+                      <Label htmlFor="settings-sms-gift-confirmations" className="text-sm font-medium">Gift Confirmations</Label>
                       <p className="text-xs text-[#666666]">Text when your gift is processed.</p>
                     </div>
-                    <Switch checked={smsGiftConfirmations} onCheckedChange={setSmsGiftConfirmations} />
+                    <Switch id="settings-sms-gift-confirmations" checked={smsGiftConfirmations} onCheckedChange={setSmsGiftConfirmations} />
                   </div>
                 </>
               )}
@@ -204,20 +201,20 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium">Enable Direct Mail</Label>
+                  <Label htmlFor="settings-direct-mail" className="text-sm font-medium">Enable Direct Mail</Label>
                   <p className="text-xs text-[#666666]">Receive printed materials.</p>
                 </div>
-                <Switch checked={mailEnabled} onCheckedChange={setMailEnabled} />
+                <Switch id="settings-direct-mail" checked={mailEnabled} onCheckedChange={setMailEnabled} />
               </div>
               {mailEnabled && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Annual Report</Label>
+                      <Label htmlFor="settings-annual-report" className="text-sm font-medium">Annual Report</Label>
                       <p className="text-xs text-[#666666]">Printed annual impact report.</p>
                     </div>
-                    <Switch checked={mailAnnualReport} onCheckedChange={setMailAnnualReport} />
+                    <Switch id="settings-annual-report" checked={mailAnnualReport} onCheckedChange={setMailAnnualReport} />
                   </div>
                 </>
               )}
@@ -238,9 +235,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs text-[#999999]">Report Period</Label>
+                <Label htmlFor="settings-report-period" className="text-xs text-[#999999]">Report Period</Label>
                 <Select value={reportPeriod} onValueChange={setReportPeriod}>
-                  <SelectTrigger>
+                  <SelectTrigger id="settings-report-period">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
