@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { ContentItem } from '@/types';
-import { isDevBypass } from '@/lib/dev-mode';
-import { getMockContent } from '@/lib/mock-store';
 
 interface UseContentReturn {
   items: ContentItem[];
@@ -17,24 +15,40 @@ export function useContent(): UseContentReturn {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchContent() {
       try {
         setIsLoading(true);
+        setError(null);
 
-        if (isDevBypass) {
-          setItems(getMockContent());
-          return;
+        const response = await fetch('/api/content', {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch content');
         }
 
-        setItems([]);
+        const payload = await response.json();
+        const nextItems = Array.isArray(payload.items) ? payload.items : [];
+        setItems(nextItems as ContentItem[]);
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError(err instanceof Error ? err : new Error('Unknown error'));
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     }
 
     fetchContent();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   return { items, isLoading, error };

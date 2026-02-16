@@ -67,6 +67,7 @@ export const APP_CONFIG = {
 export const ROUTES = {
   auth: {
     login: '/login',
+    adminLogin: '/admin/login',
     verify: '/verify'
   },
   portal: {
@@ -102,7 +103,7 @@ export const ROUTES = {
 } as const;
 
 export const COURSE_ACCESS_LEVELS: Record<string, string[]> = {
-  partner: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador'],
+  partner: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador', 'volunteer'],
   major_donor: ['major_donor', 'foundation'],
   church: ['church'],
   foundation: ['foundation'],
@@ -116,7 +117,7 @@ export function canAccessCourse(accessLevel: string, userType: string): boolean 
 
 export const CONTENT_ACCESS_LEVELS: Record<string, string[]> = {
   all: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador', 'volunteer'],
-  partner: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador'],
+  partner: ['individual', 'major_donor', 'church', 'foundation', 'daf', 'ambassador', 'volunteer'],
   major_donor: ['major_donor', 'foundation'],
   church: ['church'],
   foundation: ['foundation'],

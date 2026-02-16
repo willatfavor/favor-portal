@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export interface EmailOptions {
   to: string | string[];
@@ -18,6 +19,17 @@ function hasHtml(options: SendEmailOptions): options is EmailOptions & { html: s
 
 export async function sendEmail(options: SendEmailOptions) {
   const from = options.from || 'Favor International <noreply@favorintl.org>';
+
+  if (!resend) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY is required in production.');
+    }
+    console.log('Resend not configured, skipping email send in development:', {
+      to: options.to,
+      subject: options.subject,
+    });
+    return { success: true, id: 'dev-email-skip' };
+  }
   
   try {
     const { data, error } = hasHtml(options)

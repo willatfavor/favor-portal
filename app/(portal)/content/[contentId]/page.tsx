@@ -24,8 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/portal/empty-state";
 import { SectionHeader } from "@/components/portal/section-header";
-import { recordActivity } from "@/lib/mock-store";
-import { isDevBypass } from "@/lib/dev-mode";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { ContentItem } from "@/types";
 import { useState } from "react";
 
@@ -114,15 +113,14 @@ export default function ContentDetailPage() {
   useEffect(() => {
     if (!item || !user?.id) return;
     addToRecentlyViewed(item.id);
-    if (isDevBypass) {
-      recordActivity({
-        id: `activity-${Date.now()}`,
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         type: "content_viewed",
-        userId: user.id,
-        createdAt: new Date().toISOString(),
         metadata: { contentId: item.id, type: item.type },
-      });
-    }
+      }),
+    }).catch(() => undefined);
   }, [item, user?.id]);
 
   // Bookmark state
@@ -172,11 +170,7 @@ export default function ContentDetailPage() {
   }, [item, accessibleItems]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading content...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   if (!item) {

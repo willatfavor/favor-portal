@@ -51,6 +51,11 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
+      <div className="sr-only" role="status" aria-live="polite">
+        {unreadCount > 0
+          ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
+          : "No unread notifications"}
+      </div>
       <div className="flex items-center justify-between border-b border-[#c5ccc2]/20 px-5 py-4">
         <div className="flex items-center gap-2">
           <h2 className="font-serif text-lg font-semibold text-[#1a1a1a]">

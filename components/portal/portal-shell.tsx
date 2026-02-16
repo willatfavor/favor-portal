@@ -235,7 +235,7 @@ export function PortalShell({ children }: PortalShellProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
         {children}
       </main>
 

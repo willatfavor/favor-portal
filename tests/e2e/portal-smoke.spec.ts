@@ -4,18 +4,29 @@ import { expect, test } from "@playwright/test";
 const portalPaths = [
   "/login",
   "/dashboard",
+  "/profile",
+  "/settings",
   "/content",
   "/content/content-001",
   "/courses",
   "/courses/course-001",
   "/giving",
+  "/giving/goals",
   "/giving/history",
   "/giving/impact",
   "/giving/recurring",
+  "/major-donor",
+  "/volunteer",
+  "/assistant",
+  "/ambassador",
+  "/church",
+  "/daf",
+  "/foundation",
 ];
 
 // Admin surfaces available in the same dev bypass environment.
 const adminPaths = [
+  "/admin/login",
   "/admin",
   "/admin/users",
   "/admin/courses",
@@ -88,4 +99,18 @@ test("protected backend endpoints enforce auth", async ({ request }) => {
 
   const lmsCohorts = await request.get("/api/lms/cohorts?courseId=course-001");
   expect(lmsCohorts.status()).toBe(401);
+});
+
+test("auth magic-link supports admin scope payload", async ({ request }) => {
+  const response = await request.post("/api/auth/magic-link", {
+    data: {
+      email: "admin@favor.local",
+      scope: "admin",
+      redirectTo: "/admin/users",
+    },
+  });
+
+  expect(response.status()).toBe(200);
+  const payload = (await response.json()) as { devLink?: string };
+  expect(payload.devLink).toContain("scope=admin");
 });

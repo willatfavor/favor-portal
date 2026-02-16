@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isDevBypass } from '@/lib/dev-mode';
 import { getMockRecurringGifts, setMockRecurringGifts } from '@/lib/mock-store';
+import { logError, logInfo } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -47,9 +48,20 @@ export async function POST(
       return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
     }
 
+    logInfo({
+      event: 'giving.recurring.cancelled',
+      route: '/api/giving/recurring/[id]/cancel',
+      userId: session.user.id,
+      details: { recurringGiftId: id },
+    });
+
     return NextResponse.json({ success: true, gift }, { status: 200 });
   } catch (error) {
-    console.error('Recurring gift cancel POST error:', error);
+    logError({
+      event: 'giving.recurring.cancel_failed',
+      route: '/api/giving/recurring/[id]/cancel',
+      error,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

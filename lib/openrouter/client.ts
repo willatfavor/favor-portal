@@ -29,8 +29,11 @@ export async function generateCompletion(
   temperature: number = 0.7
 ): Promise<string> {
   if (!OPENROUTER_API_KEY) {
-    console.log('OpenRouter not configured, using mock response');
-    return 'AI response would appear here when OpenRouter is configured.';
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('OPENROUTER_API_KEY is required in production.');
+    }
+    console.log('OpenRouter not configured, returning development placeholder response.');
+    return 'AI is not configured in this development environment.';
   }
 
   const response = await fetch(OPENROUTER_API_URL, {
@@ -83,8 +86,17 @@ Recommend courses for this user.`;
       { role: 'user', content: userPrompt },
     ]);
 
-    // Parse the JSON response
-    return JSON.parse(response);
+    const trimmed = response.trim();
+    if (!trimmed.startsWith('[')) {
+      return ['b2c3d4e5-f6a7-8901-bcde-f12345678901', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'];
+    }
+
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed)) {
+      return ['b2c3d4e5-f6a7-8901-bcde-f12345678901', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'];
+    }
+
+    return parsed.filter((entry): entry is string => typeof entry === 'string');
   } catch (error) {
     console.error('Failed to get recommendations:', error);
     // Fallback recommendations

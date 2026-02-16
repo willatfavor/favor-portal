@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/portal/empty-state";
 import { SectionHeader } from "@/components/portal/section-header";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import {
   FileText,
   Search,
@@ -103,13 +104,7 @@ function getRecentlyViewed(): string[] {
 
 export default function ContentPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-64 items-center justify-center">
-          <div className="text-[#666666]">Loading content...</div>
-        </div>
-      }
-    >
+    <Suspense fallback={<PortalPageSkeleton />}>
       <ContentPageContent />
     </Suspense>
   );
@@ -228,11 +223,7 @@ function ContentPageContent() {
   }, [allAccessible]);
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading content...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (

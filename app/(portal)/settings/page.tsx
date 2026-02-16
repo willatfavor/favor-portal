@@ -19,11 +19,11 @@ import { Mail, MessageSquare, Bell, Save, Check, Download } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
-import { getLocalSettings, saveLocalSettings } from "@/lib/local-storage";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { preferences, isLoading } = usePreferences(user?.id);
+  const { preferences, isLoading, updatePreferences } = usePreferences(user?.id);
 
   const [emailNewsletter, setEmailNewsletter] = useState(true);
   const [emailEvents, setEmailEvents] = useState(true);
@@ -37,44 +37,42 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Restore from local storage or preferences
   useEffect(() => {
-    const local = getLocalSettings();
-    if (Object.keys(local).length > 0) {
-      setEmailNewsletter(local.emailNewsletter as boolean ?? true);
-      setEmailEvents(local.emailEvents as boolean ?? true);
-      setEmailGiving(local.emailGiving as boolean ?? true);
-      setEmailReports(local.emailReports as boolean ?? true);
-      setSmsEnabled(local.smsEnabled as boolean ?? false);
-      setSmsGiftConfirmations(local.smsGiftConfirmations as boolean ?? false);
-      setMailEnabled(local.mailEnabled as boolean ?? true);
-      setMailAnnualReport(local.mailAnnualReport as boolean ?? true);
-      setReportPeriod(local.reportPeriod as string ?? "quarterly");
-    } else if (preferences) {
-      setEmailNewsletter(preferences.emailNewsletterMonthly);
-      setEmailEvents(preferences.emailEvents);
-      setEmailGiving(preferences.emailGivingConfirmations);
-      setEmailReports(preferences.emailQuarterlyReport);
-      setSmsEnabled(preferences.smsEnabled);
-      setSmsGiftConfirmations(preferences.smsGiftConfirmations);
-      setMailEnabled(preferences.mailEnabled);
-      setMailAnnualReport(preferences.mailAnnualReport);
-    }
+    if (!preferences) return;
+    setEmailNewsletter(preferences.emailNewsletterMonthly);
+    setEmailEvents(preferences.emailEvents);
+    setEmailGiving(preferences.emailGivingConfirmations);
+    setEmailReports(preferences.emailQuarterlyReport || preferences.emailAnnualReport);
+    setSmsEnabled(preferences.smsEnabled);
+    setSmsGiftConfirmations(preferences.smsGiftConfirmations);
+    setMailEnabled(preferences.mailEnabled);
+    setMailAnnualReport(preferences.mailAnnualReport);
+    setReportPeriod(preferences.reportPeriod);
   }, [preferences]);
 
-  function handleSave() {
+  async function handleSave() {
     setSaving(true);
-    const settings = {
-      emailNewsletter, emailEvents, emailGiving, emailReports,
-      smsEnabled, smsGiftConfirmations, mailEnabled, mailAnnualReport, reportPeriod,
-    };
-    saveLocalSettings(settings);
-    setTimeout(() => {
+    try {
+      await updatePreferences({
+        emailNewsletterMonthly: emailNewsletter,
+        emailEvents,
+        emailGivingConfirmations: emailGiving,
+        emailQuarterlyReport: emailReports,
+        emailAnnualReport: emailReports,
+        smsEnabled,
+        smsGiftConfirmations,
+        mailEnabled,
+        mailAnnualReport,
+        reportPeriod: reportPeriod === "annual" ? "annual" : "quarterly",
+      });
       setSaving(false);
       setSaved(true);
       toast.success("Preferences saved");
       setTimeout(() => setSaved(false), 2000);
-    }, 600);
+    } catch {
+      setSaving(false);
+      toast.error("Failed to save preferences");
+    }
   }
 
   function downloadReport() {
@@ -112,11 +110,7 @@ export default function SettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading settings...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (
@@ -174,20 +168,20 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium">Enable SMS</Label>
+                  <Label htmlFor="settings-sms-enabled" className="text-sm font-medium">Enable SMS</Label>
                   <p className="text-xs text-[#666666]">Allow text message notifications.</p>
                 </div>
-                <Switch checked={smsEnabled} onCheckedChange={setSmsEnabled} />
+                <Switch id="settings-sms-enabled" checked={smsEnabled} onCheckedChange={setSmsEnabled} />
               </div>
               {smsEnabled && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Gift Confirmations</Label>
+                      <Label htmlFor="settings-sms-gift-confirmations" className="text-sm font-medium">Gift Confirmations</Label>
                       <p className="text-xs text-[#666666]">Text when your gift is processed.</p>
                     </div>
-                    <Switch checked={smsGiftConfirmations} onCheckedChange={setSmsGiftConfirmations} />
+                    <Switch id="settings-sms-gift-confirmations" checked={smsGiftConfirmations} onCheckedChange={setSmsGiftConfirmations} />
                   </div>
                 </>
               )}
@@ -204,20 +198,20 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium">Enable Direct Mail</Label>
+                  <Label htmlFor="settings-direct-mail" className="text-sm font-medium">Enable Direct Mail</Label>
                   <p className="text-xs text-[#666666]">Receive printed materials.</p>
                 </div>
-                <Switch checked={mailEnabled} onCheckedChange={setMailEnabled} />
+                <Switch id="settings-direct-mail" checked={mailEnabled} onCheckedChange={setMailEnabled} />
               </div>
               {mailEnabled && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Annual Report</Label>
+                      <Label htmlFor="settings-annual-report" className="text-sm font-medium">Annual Report</Label>
                       <p className="text-xs text-[#666666]">Printed annual impact report.</p>
                     </div>
-                    <Switch checked={mailAnnualReport} onCheckedChange={setMailAnnualReport} />
+                    <Switch id="settings-annual-report" checked={mailAnnualReport} onCheckedChange={setMailAnnualReport} />
                   </div>
                 </>
               )}
@@ -238,9 +232,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-xs text-[#999999]">Report Period</Label>
+                <Label htmlFor="settings-report-period" className="text-xs text-[#999999]">Report Period</Label>
                 <Select value={reportPeriod} onValueChange={setReportPeriod}>
-                  <SelectTrigger>
+                  <SelectTrigger id="settings-report-period">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

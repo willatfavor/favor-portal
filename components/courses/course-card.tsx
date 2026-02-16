@@ -13,12 +13,24 @@ interface CourseCardProps {
   course: Course;
   progress: number;
   totalModules: number;
+  totalDurationSeconds?: number;
 }
 
-export function CourseCard({ course, progress, totalModules }: CourseCardProps) {
+export function CourseCard({
+  course,
+  progress,
+  totalModules,
+  totalDurationSeconds,
+}: CourseCardProps) {
   const progressPercentage = totalModules > 0 ? (progress / totalModules) * 100 : 0;
   const isCompleted = progressPercentage === 100;
   const isStarted = progress > 0;
+  const durationMinutes = Math.max(
+    1,
+    Math.round((totalDurationSeconds && totalDurationSeconds > 0
+      ? totalDurationSeconds
+      : totalModules * 15 * 60) / 60)
+  );
 
   return (
     <Card className="flex flex-col overflow-hidden">
@@ -81,7 +93,7 @@ export function CourseCard({ course, progress, totalModules }: CourseCardProps) 
           </span>
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            ~{totalModules * 15} mins
+            ~{durationMinutes} mins
           </span>
         </div>
 

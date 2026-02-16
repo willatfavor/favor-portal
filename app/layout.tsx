@@ -31,6 +31,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${montserrat.variable}`}>
       <body className="font-sans antialiased bg-transparent">
+        <a href="#main-content" className="skip-link">
+          Skip to content
+        </a>
         <AuthProvider>
           {children}
         </AuthProvider>

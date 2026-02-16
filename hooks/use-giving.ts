@@ -79,6 +79,7 @@ export function useGiving(userId: string | undefined, refreshKey?: number): UseG
           blackbaudGiftId: g.blackbaud_gift_id || undefined,
           isRecurring: g.is_recurring,
           receiptSent: g.receipt_sent,
+          source: (g.source as Gift["source"]) ?? "imported",
         })) || []);
 
         setRecurringGifts(recurringData?.map((r: Tables<'recurring_gifts'>) => ({

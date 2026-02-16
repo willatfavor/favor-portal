@@ -22,19 +22,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, CheckCircle, Clock } from "lucide-react";
-import { addSupportTicket, getSupportTickets } from "@/lib/local-storage";
 import type { SupportTicket } from "@/types";
-import { useAuth } from "@/hooks/use-auth";
-import { recordActivity } from "@/lib/mock-store";
 import { toast } from "sonner";
 
-// Need to check if Select exists
 interface ContactSupportDialogProps {
   trigger?: React.ReactNode;
 }
 
 export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<"form" | "history">("form");
   const [category, setCategory] = useState("");
@@ -43,56 +38,62 @@ export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
-  function handleOpen(isOpen: boolean) {
-    setOpen(isOpen);
-    if (isOpen) {
-      setTickets(getSupportTickets());
-      setView(getSupportTickets().length > 0 ? "history" : "form");
+  async function loadTickets() {
+    try {
+      const response = await fetch("/api/support", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const nextTickets = Array.isArray(payload.tickets) ? (payload.tickets as SupportTicket[]) : [];
+      setTickets(nextTickets);
+      setView(nextTickets.length > 0 ? "history" : "form");
+    } catch {
+      setTickets([]);
+      setView("form");
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleOpen(isOpen: boolean) {
+    setOpen(isOpen);
+    if (isOpen) {
+      loadTickets();
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!category || !subject || !message) return;
 
     setSubmitting(true);
-    // Simulate brief delay
-    setTimeout(() => {
-      const ticket = addSupportTicket({
-        category,
-        subject,
-        message,
-        requesterName: user ? `${user.firstName} ${user.lastName}` : undefined,
-        requesterEmail: user?.email,
-        messages: [
-          {
-            id: `msg-${Date.now()}`,
-            sender: "partner",
-            message,
-            createdAt: new Date().toISOString(),
-          },
-        ],
+    try {
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, subject, message }),
       });
-      recordActivity({
-        id: `activity-${Date.now()}`,
-        type: "support_ticket",
-        userId: user?.id ?? "unknown",
-        createdAt: new Date().toISOString(),
-        metadata: { subject },
-      });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("favor:support"));
+
+      if (!response.ok) {
+        throw new Error("Failed");
       }
+
+      const payload = await response.json();
+      const ticket = payload.ticket as SupportTicket;
+      if (!ticket?.id) {
+        throw new Error("Invalid response");
+      }
+
       setTickets((prev) => [ticket, ...prev]);
       setCategory("");
       setSubject("");
       setMessage("");
-      setSubmitting(false);
       setView("history");
       toast.success("Support request submitted", {
         description: "We'll get back to you within 1-2 business days.",
       });
-    }, 600);
+    } catch {
+      toast.error("Unable to submit support request");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -107,15 +108,10 @@ export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
       </DialogTrigger>
       <DialogContent className="max-w-lg glass-elevated border-0">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl">
-            Partner Support
-          </DialogTitle>
-          <DialogDescription>
-            Submit a request or view your support history.
-          </DialogDescription>
+          <DialogTitle className="font-serif text-xl">Partner Support</DialogTitle>
+          <DialogDescription>Submit a request or view your support history.</DialogDescription>
         </DialogHeader>
 
-        {/* Toggle */}
         <div className="flex gap-2 border-b border-[#c5ccc2]/20 pb-3">
           <Button
             variant={view === "form" ? "default" : "ghost"}
@@ -187,43 +183,34 @@ export function ContactSupportDialog({ trigger }: ContactSupportDialogProps) {
             {tickets.length === 0 ? (
               <div className="py-8 text-center">
                 <MessageCircle className="mx-auto h-8 w-8 text-[#c5ccc2]" />
-                <p className="mt-2 text-sm text-[#666666]">
-                  No support requests yet.
-                </p>
+                <p className="mt-2 text-sm text-[#666666]">No support requests yet.</p>
               </div>
             ) : (
-              tickets.map((t) => (
-                <div
-                  key={t.id}
-                  className="rounded-lg glass-inset p-4"
-                >
+              tickets.map((ticket) => (
+                <div key={ticket.id} className="rounded-lg glass-inset p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="text-sm font-medium text-[#1a1a1a]">
-                        {t.subject}
-                      </p>
-                      <p className="text-xs text-[#666666]">{t.category}</p>
+                      <p className="text-sm font-medium text-[#1a1a1a]">{ticket.subject}</p>
+                      <p className="text-xs text-[#666666]">{ticket.category}</p>
                     </div>
                     <Badge
                       variant="secondary"
                       className={
-                        t.status === "open"
+                        ticket.status === "open"
                           ? "bg-[#e1a730]/10 text-[#a36d4c]"
-                          : t.status === "resolved"
+                          : ticket.status === "resolved"
                             ? "bg-[#2b4d24]/10 text-[#2b4d24]"
                             : ""
                       }
                     >
-                      {t.status === "open" && <Clock className="mr-1 h-3 w-3" />}
-                      {t.status === "resolved" && <CheckCircle className="mr-1 h-3 w-3" />}
-                      {t.status}
+                      {ticket.status === "open" && <Clock className="mr-1 h-3 w-3" />}
+                      {ticket.status === "resolved" && <CheckCircle className="mr-1 h-3 w-3" />}
+                      {ticket.status}
                     </Badge>
                   </div>
-                  <p className="mt-2 text-xs text-[#666666] line-clamp-2">
-                    {t.message}
-                  </p>
+                  <p className="mt-2 text-xs text-[#666666] line-clamp-2">{ticket.message}</p>
                   <p className="mt-2 text-[10px] text-[#999999]">
-                    {new Date(t.createdAt).toLocaleDateString("en-US", {
+                    {new Date(ticket.createdAt).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",

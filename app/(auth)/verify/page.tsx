@@ -19,12 +19,16 @@ function LoadingState() {
 function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') ?? searchParams.get('token_hash');
+  const scope = searchParams.get('scope') === 'admin' ? 'admin' : 'portal';
+  const redirectParam = searchParams.get('redirect');
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
+  const [errorMessage, setErrorMessage] = useState('The login link may have expired or is invalid.');
 
   useEffect(() => {
     if (!token) {
       setStatus('error');
+      setErrorMessage('Missing login token. Please request a new link.');
       return;
     }
 
@@ -33,28 +37,42 @@ function VerifyContent() {
         const response = await fetch('/api/auth/verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({
+            token,
+            scope,
+            redirectTo: redirectParam,
+          }),
         });
 
+        const payload = await response.json();
         if (!response.ok) {
-          throw new Error('Verification failed');
+          const message = typeof payload?.error === 'string' ? payload.error : 'Verification failed';
+          throw new Error(message);
         }
 
         setStatus('success');
         toast.success('Successfully logged in!');
         
-        // Redirect to dashboard after a brief delay
+        // Redirect after a brief delay based on verified scope.
+        const target =
+          typeof payload?.redirectTo === 'string'
+            ? payload.redirectTo
+            : scope === 'admin'
+              ? '/admin'
+              : '/dashboard';
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push(target);
         }, 1500);
       } catch {
         setStatus('error');
-        toast.error('Failed to verify login link. Please try again.');
+        const message = error instanceof Error ? error.message : 'Failed to verify login link. Please try again.';
+        setErrorMessage(message);
+        toast.error(message);
       }
     }
 
     verifyToken();
-  }, [token, router]);
+  }, [token, router, scope, redirectParam]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent">
@@ -86,9 +104,9 @@ function VerifyContent() {
               </svg>
             </div>
             <h1 className="font-['Cormorant_Garamond'] text-2xl text-[#1a1a1a]">Verification Failed</h1>
-            <p className="mt-2 text-[#666666]">The login link may have expired or is invalid.</p>
+            <p className="mt-2 text-[#666666]">{errorMessage}</p>
             <button 
-              onClick={() => router.push('/login')}
+              onClick={() => router.push(scope === 'admin' ? '/admin/login' : '/login')}
               className="mt-4 text-[#2b4d24] underline"
             >
               Back to login

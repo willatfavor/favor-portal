@@ -22,6 +22,8 @@ export interface Database {
           rdd_assignment: string | null;
           avatar_url: string | null;
           is_admin: boolean;
+          onboarding_required: boolean;
+          onboarding_completed_at: string | null;
           created_at: string;
           last_login: string | null;
         };
@@ -37,6 +39,8 @@ export interface Database {
           rdd_assignment?: string | null;
           avatar_url?: string | null;
           is_admin?: boolean;
+          onboarding_required?: boolean;
+          onboarding_completed_at?: string | null;
           created_at?: string;
           last_login?: string | null;
         };
@@ -52,6 +56,8 @@ export interface Database {
           rdd_assignment?: string | null;
           avatar_url?: string | null;
           is_admin?: boolean;
+          onboarding_required?: boolean;
+          onboarding_completed_at?: string | null;
           created_at?: string;
           last_login?: string | null;
         };
@@ -68,6 +74,9 @@ export interface Database {
           is_recurring: boolean;
           receipt_sent: boolean;
           synced_at: string;
+          source: string;
+          note: string | null;
+          created_at: string;
         };
         Insert: {
           id?: string;
@@ -79,6 +88,9 @@ export interface Database {
           is_recurring?: boolean;
           receipt_sent?: boolean;
           synced_at?: string;
+          source?: string;
+          note?: string | null;
+          created_at?: string;
         };
         Update: {
           id?: string;
@@ -90,6 +102,9 @@ export interface Database {
           is_recurring?: boolean;
           receipt_sent?: boolean;
           synced_at?: string;
+          source?: string;
+          note?: string | null;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -146,6 +161,7 @@ export interface Database {
           mail_annual_report: boolean;
           mail_holiday_card: boolean;
           mail_appeals: boolean;
+          report_period: string;
           blackbaud_solicit_codes: string[];
           last_synced_at: string | null;
           updated_at: string;
@@ -169,6 +185,7 @@ export interface Database {
           mail_annual_report?: boolean;
           mail_holiday_card?: boolean;
           mail_appeals?: boolean;
+          report_period?: string;
           blackbaud_solicit_codes?: string[];
           last_synced_at?: string | null;
           updated_at?: string;
@@ -192,8 +209,81 @@ export interface Database {
           mail_annual_report?: boolean;
           mail_holiday_card?: boolean;
           mail_appeals?: boolean;
+          report_period?: string;
           blackbaud_solicit_codes?: string[];
           last_synced_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_profile_details: {
+        Row: {
+          id: string;
+          user_id: string;
+          street: string | null;
+          city: string | null;
+          state: string | null;
+          zip: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_giving_goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          target_amount: number;
+          current_amount: number;
+          deadline: string;
+          category: string;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          target_amount: number;
+          current_amount?: number;
+          deadline: string;
+          category?: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          target_amount?: number;
+          current_amount?: number;
+          deadline?: string;
+          category?: string;
+          description?: string | null;
+          created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
@@ -711,6 +801,234 @@ export interface Database {
           is_instructor_reply?: boolean;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      portal_content: {
+        Row: {
+          id: string;
+          title: string;
+          excerpt: string;
+          body: string;
+          type: string;
+          access_level: string;
+          status: string;
+          author: string;
+          tags: string[];
+          cover_image: string | null;
+          file_url: string | null;
+          published_at: string | null;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          excerpt: string;
+          body: string;
+          type: string;
+          access_level: string;
+          status?: string;
+          author?: string;
+          tags?: string[];
+          cover_image?: string | null;
+          file_url?: string | null;
+          published_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          excerpt?: string;
+          body?: string;
+          type?: string;
+          access_level?: string;
+          status?: string;
+          author?: string;
+          tags?: string[];
+          cover_image?: string | null;
+          file_url?: string | null;
+          published_at?: string | null;
+          created_by?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      support_tickets: {
+        Row: {
+          id: string;
+          requester_user_id: string | null;
+          requester_name: string | null;
+          requester_email: string | null;
+          category: string;
+          subject: string;
+          message: string;
+          status: string;
+          priority: string;
+          created_at: string;
+          updated_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          requester_user_id?: string | null;
+          requester_name?: string | null;
+          requester_email?: string | null;
+          category: string;
+          subject: string;
+          message: string;
+          status?: string;
+          priority?: string;
+          created_at?: string;
+          updated_at?: string;
+          resolved_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          requester_user_id?: string | null;
+          requester_name?: string | null;
+          requester_email?: string | null;
+          category?: string;
+          subject?: string;
+          message?: string;
+          status?: string;
+          priority?: string;
+          created_at?: string;
+          updated_at?: string;
+          resolved_at?: string | null;
+        };
+        Relationships: [];
+      };
+      support_messages: {
+        Row: {
+          id: string;
+          ticket_id: string;
+          sender: string;
+          sender_user_id: string | null;
+          message: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ticket_id: string;
+          sender: string;
+          sender_user_id?: string | null;
+          message: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ticket_id?: string;
+          sender?: string;
+          sender_user_id?: string | null;
+          message?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_templates: {
+        Row: {
+          id: string;
+          channel: string;
+          name: string;
+          subject: string | null;
+          content: string;
+          status: string;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          channel: string;
+          name: string;
+          subject?: string | null;
+          content: string;
+          status?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          channel?: string;
+          name?: string;
+          subject?: string | null;
+          content?: string;
+          status?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      communication_send_logs: {
+        Row: {
+          id: string;
+          template_id: string | null;
+          template_name: string;
+          channel: string;
+          recipient: string | null;
+          sent_by: string | null;
+          status: string;
+          metadata: Json;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          template_id?: string | null;
+          template_name: string;
+          channel: string;
+          recipient?: string | null;
+          sent_by?: string | null;
+          status?: string;
+          metadata?: Json;
+          sent_at?: string;
+        };
+        Update: {
+          id?: string;
+          template_id?: string | null;
+          template_name?: string;
+          channel?: string;
+          recipient?: string | null;
+          sent_by?: string | null;
+          status?: string;
+          metadata?: Json;
+          sent_at?: string;
+        };
+        Relationships: [];
+      };
+      portal_activity_events: {
+        Row: {
+          id: string;
+          type: string;
+          user_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: string;
+          user_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          type?: string;
+          user_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
         };
         Relationships: [];
       };

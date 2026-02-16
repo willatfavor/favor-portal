@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
@@ -183,11 +184,7 @@ export default function RecurringGiftsPage() {
     .reduce((sum, g) => sum + g.amount, 0);
 
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-[#666666]">Loading your recurring gifts...</div>
-      </div>
-    );
+    return <PortalPageSkeleton />;
   }
 
   return (
@@ -404,10 +401,11 @@ export default function RecurringGiftsPage() {
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-5">
             <div className="space-y-2">
-              <Label>Amount</Label>
+              <Label htmlFor="recurring-create-amount">Amount</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666]">$</span>
                 <Input
+                  id="recurring-create-amount"
                   type="number"
                   min={1}
                   placeholder="0"
@@ -419,9 +417,9 @@ export default function RecurringGiftsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Frequency</Label>
+              <Label htmlFor="recurring-create-frequency">Frequency</Label>
               <Select value={createFrequency} onValueChange={(v) => setCreateFrequency(v as RecurringGift["frequency"])}>
-                <SelectTrigger>
+                <SelectTrigger id="recurring-create-frequency">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -432,9 +430,9 @@ export default function RecurringGiftsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Designation</Label>
+              <Label htmlFor="recurring-create-designation">Designation</Label>
               <Select value={createDesignation} onValueChange={setCreateDesignation}>
-                <SelectTrigger>
+                <SelectTrigger id="recurring-create-designation">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -467,10 +465,11 @@ export default function RecurringGiftsPage() {
           {editingGift && (
             <form onSubmit={handleUpdate} className="space-y-5">
               <div className="space-y-2">
-                <Label>Amount</Label>
+                <Label htmlFor="recurring-edit-amount">Amount</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#666666]">$</span>
                   <Input
+                    id="recurring-edit-amount"
                     type="number"
                     min={1}
                     className="pl-7"
@@ -483,14 +482,14 @@ export default function RecurringGiftsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Frequency</Label>
+                <Label htmlFor="recurring-edit-frequency">Frequency</Label>
                 <Select
                   value={editingGift.frequency}
                   onValueChange={(v) =>
                     setEditingGift({ ...editingGift, frequency: v as RecurringGift["frequency"] })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="recurring-edit-frequency">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -501,8 +500,9 @@ export default function RecurringGiftsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Next Charge Date</Label>
+                <Label htmlFor="recurring-edit-next-charge-date">Next Charge Date</Label>
                 <Input
+                  id="recurring-edit-next-charge-date"
                   type="date"
                   value={editingGift.nextChargeDate.split("T")[0]}
                   onChange={(e) =>

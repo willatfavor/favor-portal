@@ -48,9 +48,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return prefix?.href;
   }, [pathname, visibleNav]);
 
+  if (pathname === "/admin/login") {
+    return <main id="main-content">{children}</main>;
+  }
+
   if (!canAccessAdmin) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center px-4">
+      <div id="main-content" className="min-h-screen bg-transparent flex items-center justify-center px-4">
         <div className="max-w-md rounded-2xl glass-pane p-6 text-center space-y-4">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#2b4d24]/10">
             <Shield className="h-6 w-6 text-[#2b4d24]" />
@@ -66,6 +70,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Link href="/dashboard">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Portal
               </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/admin/login">Admin Sign-In</Link>
             </Button>
             {isDev && (
               <Button
@@ -100,7 +107,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <main id="main-content" className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
           <aside className="space-y-2">
             {visibleNav.map((item) => {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { User } from "@/types";
-import { getMockUsers, setMockUsers, updateMockUser } from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,16 +22,32 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Search, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [editing, setEditing] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/admin/users", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      setUsers(Array.isArray(payload.users) ? payload.users : []);
+    } catch {
+      toast.error("Unable to load users");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setUsers(getMockUsers());
-  }, []);
+    loadUsers();
+  }, [loadUsers]);
 
   const filtered = useMemo(() => {
     return users.filter((user) => {
@@ -45,22 +60,30 @@ export default function AdminUsersPage() {
     });
   }, [users, query, filter]);
 
-  function handleSave() {
+  async function handleSave() {
     if (!editing) return;
-    const base = users.find((u) => u.id === editing.id);
-    if (!base) return;
-    const updated = updateMockUser(editing.id, {
-      firstName: editing.firstName,
-      lastName: editing.lastName,
-      email: editing.email,
-      constituentType: editing.constituentType,
-      isAdmin: editing.isAdmin,
-      lifetimeGivingTotal: base.lifetimeGivingTotal,
-      rddAssignment: base.rddAssignment,
-    });
-    if (updated) {
-      const next = users.map((u) => (u.id === updated.id ? updated : u));
-      setUsers(next);
+    try {
+      const response = await fetch(`/api/admin/users/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: editing.firstName,
+          lastName: editing.lastName,
+          email: editing.email,
+          constituentType: editing.constituentType,
+          isAdmin: editing.isAdmin,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed");
+
+      const payload = await response.json();
+      const updated = payload.user as User;
+      setUsers((prev) => prev.map((user) => (user.id === updated.id ? updated : user)));
+      setEditing(null);
+      toast.success("User updated");
+    } catch {
+      toast.error("Unable to update user");
     }
   }
 
@@ -108,7 +131,7 @@ export default function AdminUsersPage() {
       <Card>
         <CardContent className="p-0">
           <div className="divide-y divide-[#e5e5e0]">
-            {filtered.map((user) => (
+            {(isLoading ? [] : filtered).map((user) => (
               <div key={user.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2b4d24]/10">
@@ -229,7 +252,7 @@ export default function AdminUsersPage() {
                               variant="outline"
                               onClick={() => {
                                 setEditing(null);
-                                setUsers(getMockUsers());
+                                loadUsers();
                               }}
                             >
                               Cancel
@@ -247,16 +270,7 @@ export default function AdminUsersPage() {
       </Card>
 
       <div className="flex justify-end">
-        <Button
-          variant="outline"
-          onClick={() => {
-            const seeded = getMockUsers();
-            setMockUsers(seeded);
-            setUsers(seeded);
-          }}
-        >
-          Restore Defaults
-        </Button>
+        <Button variant="outline" onClick={loadUsers}>Refresh</Button>
       </div>
     </div>
   );

@@ -91,8 +91,30 @@ export interface CommunicationPreferences {
   mailHolidayCard: boolean;
   mailAppeals: boolean;
   
+  reportPeriod: 'quarterly' | 'annual';
   blackbaudSolicitCodes: string[];
   lastSyncedAt?: string;
+  updatedAt: string;
+}
+
+export interface UserProfileDetails {
+  userId: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
+export interface GivingGoal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string;
+  category: 'annual' | 'project' | 'monthly' | 'custom';
+  description?: string;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -299,11 +321,15 @@ export interface SupportMessage {
 
 export interface SupportTicket {
   id: string;
+  requesterUserId?: string;
   category: string;
   subject: string;
   message: string;
   status: 'open' | 'in_progress' | 'resolved';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
   createdAt: string;
+  updatedAt?: string;
+  resolvedAt?: string;
   requesterName?: string;
   requesterEmail?: string;
   messages?: SupportMessage[];
@@ -365,6 +391,7 @@ export interface ContentItem {
   date: string;
   author: string;
   tags: string[];
+  status?: 'published' | 'draft';
   coverImage?: string;
   fileUrl?: string;
 }

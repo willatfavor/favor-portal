@@ -122,71 +122,15 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 ---
 
 ## Database Migrations
-Before deployment or for local development with Supabase, apply the migrations in order:
-1. `database/migrations/001_initial_schema.sql` - Core tables (users, giving_cache, etc.)
-2. `database/migrations/002_lms_production_upgrade.sql` - LMS extensions and RLS policies.
-3. `database/migrations/003_lms_advanced_features.sql` - LMS RBAC, analytics, versioning, and certificate verification.
 
----
+Apply migrations in order:
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Anonymous Key |
-| `NEXT_PUBLIC_APP_URL` | Base URL of the app (e.g., http://localhost:3000) |
-| `RESEND_API_KEY` | API Key for Resend email service |
-| `BLACKBAUD_API_KEY` | API Key for Blackbaud SKY (Optional in dev) |
-| `TWILIO_ACCOUNT_SID` | Twilio Account SID (Optional) |
-| `TWILIO_AUTH_TOKEN` | Twilio Auth Token (Optional) |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare Account ID (Optional) |
-| `OPENROUTER_API_KEY` | API Key for OpenRouter (DeepSeek V3) |
-
----
-
-## Project Structure
-
-```text
-app/
-  (auth)/           # Magic link login and verification
-  (portal)/          # Protected portal routes (dashboard, giving, LMS)
-  api/               # Backend API endpoints
-components/
-  ui/                # shadcn/ui components
-  portal/            # Shared portal components (SectionHeader, ModuleTile, etc.)
-  giving/            # Finance-specific components
-  courses/           # LMS-specific components
-lib/                 # Third-party clients (Supabase, Blackbaud, Resend, etc.)
-hooks/               # Custom React hooks (useAuth, etc.)
-database/            # SQL migrations and seed data
-types/               # TypeScript type definitions
-```
-
----
-
-## Brand & UI Guidelines
-
-### Colors (80/15/5 Rule)
-- **Canvas (80%):** Cream (`#FFFEF9`), Warm White (`#FAF9F6`), Soft Beige (`#F5F3EF`)
-- **Primary (15%):** Deep Green (`#2b4d24`), Sage (`#8b957b`)
-- **Highlight (5%):** Gold (`#e1a730`), Terracotta (`#a36d4c`)
-
-### Typography
-- **Headlines:** Cormorant Garamond (Serif)
-- **Body/UI:** Montserrat (Sans-serif)
-
-For more details, see `docs/ui-style.md`.
-
----
-
-## Handoff Documentation
-
-Detailed handoff notes for specific implementation areas:
-- **SKY Integration:** `docs/SKY_INTEGRATION_HANDOFF.md`
-- **LMS Production:** `docs/LMS_PRODUCTION_HANDOFF.md`
-
----
+1. `database/migrations/001_initial_schema.sql`
+2. `database/migrations/002_lms_production_upgrade.sql`
+3. `database/migrations/003_lms_advanced_features.sql`
+4. `database/migrations/004_lms_community_and_cohorts.sql`
+5. `database/migrations/005_portal_admin_data_plane.sql`
+6. `database/migrations/006_auth_profile_settings_goals_and_sky_readiness.sql`
 
 ## Scripts
 
@@ -201,9 +145,12 @@ Detailed handoff notes for specific implementation areas:
 - `npm run test:e2e:ui` - Open Playwright UI mode
 - `npm run test:e2e:report` - Open Playwright HTML test report
 
----
+## Validation Snapshot
 
-## Collaboration
+- `npm run lint` -> pass
+- `npm run typecheck` -> pass
+- `npm run build` -> pass
+- `npm run test:e2e` -> pass (`39` tests)
 
 - **Branching:** Use focused feature branches.
 - **PRs:** Follow the template in `.github/PULL_REQUEST_TEMPLATE.md`.
@@ -211,4 +158,5 @@ Detailed handoff notes for specific implementation areas:
   - `quality` job: `npm ci`, lint, typecheck, build
   - `e2e` job: Playwright browser install + smoke tests + artifact upload (`playwright-report`, `test-results`)
 
-See `docs/PR_COLLABORATION_NOTES.md` for full details.
+- Dedicated onboarding UX for users provisioned without SKY match (`onboarding_required = true`) is not fully built yet.
+- Dark mode is not implemented.

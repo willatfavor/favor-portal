@@ -48,7 +48,6 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
-import { getMockGifts, getMockUsers } from "@/lib/mock-store";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Gift, User } from "@/types";
@@ -71,6 +70,21 @@ export default function AdminGiftsPage() {
     setGifts(allGifts);
     setUsers(allUsers);
     setIsLoading(false);
+    fetch("/api/admin/gifts", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed");
+        return response.json();
+      })
+      .then((payload) => {
+        setGifts(Array.isArray(payload.gifts) ? payload.gifts : []);
+        setUsers(Array.isArray(payload.users) ? payload.users : []);
+      })
+      .catch(() => {
+        toast.error("Unable to load gifts");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {

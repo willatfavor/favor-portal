@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SupportTicket } from "@/types";
-import { getSupportTickets, updateSupportTicketStatus, saveSupportTickets } from "@/lib/local-storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,51 +14,67 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LifeBuoy } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setTickets(getSupportTickets());
-  }, []);
-
-  useEffect(() => {
-    function handleSupport() {
-      setTickets(getSupportTickets());
+  const loadTickets = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/admin/support", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      setTickets(Array.isArray(payload.tickets) ? payload.tickets : []);
+    } catch {
+      toast.error("Unable to load support tickets");
+    } finally {
+      setIsLoading(false);
     }
-    window.addEventListener("favor:support", handleSupport);
-    return () => window.removeEventListener("favor:support", handleSupport);
   }, []);
 
-  function updateStatus(id: string, status: SupportTicket["status"]) {
-    const next = updateSupportTicketStatus(id, status);
-    setTickets(next);
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
+
+  async function updateStatus(id: string, status: SupportTicket["status"]) {
+    try {
+      const response = await fetch("/api/admin/support", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: id, status }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const updated = payload.ticket as SupportTicket;
+      setTickets((prev) => prev.map((ticket) => (ticket.id === updated.id ? { ...ticket, ...updated } : ticket)));
+      toast.success("Ticket status updated");
+    } catch {
+      toast.error("Unable to update ticket status");
+    }
   }
 
-  function sendReply(ticket: SupportTicket) {
+  async function sendReply(ticket: SupportTicket) {
     const message = replyDrafts[ticket.id]?.trim();
     if (!message) return;
-    const updated: SupportTicket[] = tickets.map((t) => {
-      if (t.id !== ticket.id) return t;
-      const messages = t.messages ?? [];
-      return {
-        ...t,
-        status: t.status === "resolved" ? t.status : "in_progress",
-        messages: [
-          ...messages,
-          {
-            id: `msg-${Date.now()}`,
-            sender: "staff" as const,
-            message,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      };
-    });
-    saveSupportTickets(updated);
-    setTickets(updated);
-    setReplyDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
+
+    try {
+      const response = await fetch("/api/admin/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: ticket.id, message }),
+      });
+
+      if (!response.ok) throw new Error("Failed");
+
+      setReplyDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
+      await loadTickets();
+      toast.success("Reply sent");
+    } catch {
+      toast.error("Unable to send reply");
+    }
   }
 
   return (
@@ -69,7 +84,11 @@ export default function AdminSupportPage() {
         <p className="text-sm text-[#666666]">Review partner requests and update ticket status.</p>
       </div>
 
-      {tickets.length === 0 ? (
+      {isLoading ? (
+        <Card className="glass-pane">
+          <CardContent className="p-6 text-center text-sm text-[#666666]">Loading support tickets...</CardContent>
+        </Card>
+      ) : tickets.length === 0 ? (
         <Card className="glass-pane">
           <CardContent className="p-6 text-center">
             <LifeBuoy className="mx-auto h-8 w-8 text-[#c5ccc2]" />
@@ -123,20 +142,20 @@ export default function AdminSupportPage() {
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-[#8b957b]">Thread</p>
                     <div className="space-y-2">
-                      {ticket.messages?.map((msg) => (
+                      {ticket.messages?.map((message) => (
                         <div
-                          key={msg.id}
+                          key={message.id}
                           className={`rounded-lg px-3 py-2 text-xs ${
-                            msg.sender === "staff"
+                            message.sender === "staff"
                               ? "bg-[#2b4d24]/10 text-[#1a1a1a]"
                               : "bg-white/70 text-[#1a1a1a]"
                           }`}
                         >
                           <div className="flex items-center justify-between text-[10px] text-[#999999]">
-                            <span>{msg.sender === "staff" ? "Staff" : "Partner"}</span>
-                            <span>{new Date(msg.createdAt).toLocaleString()}</span>
+                            <span>{message.sender === "staff" ? "Staff" : "Partner"}</span>
+                            <span>{new Date(message.createdAt).toLocaleString()}</span>
                           </div>
-                          <p className="mt-1">{msg.message}</p>
+                          <p className="mt-1">{message.message}</p>
                         </div>
                       ))}
                     </div>
