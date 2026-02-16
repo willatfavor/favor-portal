@@ -25,13 +25,12 @@ import {
   Stethoscope,
   Sprout,
   Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
   Share2,
   Download,
 } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
+import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -158,13 +157,11 @@ export default function ImpactPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <nav className="mb-2 flex items-center gap-1 text-xs text-[#999999]">
-            <Link href="/dashboard" className="hover:text-[#666666]">Home</Link>
-            <span>/</span>
-            <Link href="/giving" className="hover:text-[#666666]">Giving</Link>
-            <span>/</span>
-            <span className="font-medium text-[#1a1a1a]">Impact</span>
-          </nav>
+          <PageBackButton href="/giving" label="Back to Giving" />
+          <PageBreadcrumb items={[
+            { label: "Giving", href: "/giving" },
+            { label: "Impact" }
+          ]} />
           <h1 className="font-serif text-3xl font-semibold text-[#1a1a1a]">Your Impact</h1>
           <p className="mt-1 text-sm text-[#666666]">
             See how your generosity is transforming lives around the world.
@@ -242,7 +239,7 @@ export default function ImpactPage() {
           <SectionHeader title="Where Your Gifts Go" />
           <div className="grid gap-4">
             {Object.entries(impactData.designationBreakdown)
-              .sort(([, a], [, b]) => b - a)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
               .map(([designation, amount]) => {
                 const percentage = (amount / impactData.totalAmount) * 100;
                 return (

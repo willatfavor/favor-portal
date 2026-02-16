@@ -48,6 +48,7 @@ import {
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import type { RecurringGift } from "@/types";
@@ -195,13 +196,11 @@ export default function RecurringGiftsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <nav className="mb-2 flex items-center gap-1 text-xs text-[#999999]">
-            <Link href="/dashboard" className="hover:text-[#666666]">Home</Link>
-            <span>/</span>
-            <Link href="/giving" className="hover:text-[#666666]">Giving</Link>
-            <span>/</span>
-            <span className="font-medium text-[#1a1a1a]">Recurring Gifts</span>
-          </nav>
+          <PageBackButton href="/giving" label="Back to Giving" />
+          <PageBreadcrumb items={[
+            { label: "Giving", href: "/giving" },
+            { label: "Recurring Gifts" }
+          ]} />
           <h1 className="font-serif text-3xl font-semibold text-[#1a1a1a]">
             Recurring Gifts
           </h1>

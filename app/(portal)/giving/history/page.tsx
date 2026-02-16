@@ -25,6 +25,7 @@ import { Download, Calendar, FileText } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
+import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Gift } from "@/types";
@@ -113,13 +114,11 @@ export default function GivingHistoryPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <nav className="mb-2 flex items-center gap-1 text-xs text-[#999999]">
-            <Link href="/dashboard" className="hover:text-[#666666]">Home</Link>
-            <span>/</span>
-            <Link href="/giving" className="hover:text-[#666666]">Giving</Link>
-            <span>/</span>
-            <span className="font-medium text-[#1a1a1a]">History</span>
-          </nav>
+          <PageBackButton href="/giving" label="Back to Giving" />
+          <PageBreadcrumb items={[
+            { label: "Giving", href: "/giving" },
+            { label: "History" }
+          ]} />
           <h1 className="font-serif text-3xl font-semibold text-[#1a1a1a]">Giving History</h1>
           <p className="mt-1 text-sm text-[#666666]">
             View and download your complete giving history for tax purposes.
