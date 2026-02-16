@@ -61,10 +61,7 @@ export function useCourses(userId: string | undefined): UseCoursesReturn {
       type: (m.module_type as CourseModule['type']) ?? 'video',
       resourceUrl: m.resource_url || undefined,
       notes: m.notes || undefined,
-      quizPayload:
-        m.quiz_payload && typeof m.quiz_payload === 'object'
-          ? (m.quiz_payload as Record<string, unknown>)
-          : undefined,
+      quizPayload: m.quiz_payload || undefined,
       passThreshold: m.pass_threshold ?? 70,
     };
   }

@@ -2,9 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Course, CourseModule } from "@/types";
-import { getMockCourses, getMockModules, setMockCourses, setMockModules } from "@/lib/mock-store";
+import {
+  getMockCourses,
+  getMockModules,
+  getMockNotes,
+  getMockProgress,
+  setMockCourses,
+  setMockModules,
+} from "@/lib/mock-store";
 import { createClient } from "@/lib/supabase/client";
 import { isDevBypass } from "@/lib/dev-mode";
+import { QuizBuilder } from "@/components/admin/quiz-builder";
+import {
+  createEmptyQuizPayload,
+  isQuizPayloadReady,
+  normalizeQuizPayload,
+} from "@/lib/lms/quiz";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +39,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { GraduationCap, PlusCircle, Pencil, Film, FileText } from "lucide-react";
-import type { Tables } from "@/types/database";
+import { GraduationCap, PlusCircle, Pencil, Film, FileText, Upload, ImagePlus } from "lucide-react";
+import type { Json, Tables } from "@/types/database";
 
 const ACCESS_LEVELS: Course["accessLevel"][] = [
   "partner",
@@ -72,10 +85,7 @@ function mapModule(row: Tables<"course_modules">): CourseModule {
     resourceUrl: row.resource_url ?? "",
     notes: row.notes ?? "",
     passThreshold: row.pass_threshold ?? 70,
-    quizPayload:
-      row.quiz_payload && typeof row.quiz_payload === "object"
-        ? (row.quiz_payload as Record<string, unknown>)
-        : undefined,
+    quizPayload: row.quiz_payload ?? undefined,
   };
 }
 
@@ -101,18 +111,82 @@ export default function AdminCoursesPage() {
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [progressRows, setProgressRows] = useState<Tables<"user_course_progress">[]>([]);
+  const [notesRows, setNotesRows] = useState<Tables<"user_course_notes">[]>([]);
+  const [certificateRows, setCertificateRows] = useState<Tables<"user_course_certificates">[]>([]);
 
   const loadData = useCallback(async () => {
     setErrorMessage(null);
     if (isDevBypass) {
-      setCourses(getMockCourses());
-      setModules(getMockModules());
+      const mockCourses = getMockCourses();
+      const mockModules = getMockModules();
+      setCourses(mockCourses);
+      setModules(mockModules);
+
+      const mockProgressRows: Tables<"user_course_progress">[] = getMockProgress().map((row) => ({
+        id: row.id,
+        user_id: row.userId,
+        module_id: row.moduleId,
+        completed: row.completed,
+        completed_at: row.completedAt ?? null,
+        watch_time_seconds: row.watchTimeSeconds,
+        last_watched_at: row.lastWatchedAt ?? null,
+      }));
+      const mockNoteRows: Tables<"user_course_notes">[] = getMockNotes().map((row) => ({
+        id: row.id,
+        user_id: row.userId,
+        module_id: row.moduleId,
+        content: row.content,
+        created_at: row.updatedAt,
+        updated_at: row.updatedAt,
+      }));
+      const courseModulesMap = mockModules.reduce<Record<string, string[]>>((acc, module) => {
+        acc[module.courseId] = acc[module.courseId] || [];
+        acc[module.courseId].push(module.id);
+        return acc;
+      }, {});
+      const completionByUserCourse = new Map<string, Set<string>>();
+      for (const row of mockProgressRows) {
+        if (!row.completed) continue;
+        const moduleEntry = mockModules.find((entry) => entry.id === row.module_id);
+        if (!moduleEntry) continue;
+        const key = `${row.user_id}:${moduleEntry.courseId}`;
+        const set = completionByUserCourse.get(key) ?? new Set<string>();
+        set.add(row.module_id);
+        completionByUserCourse.set(key, set);
+      }
+      const mockCertificates: Tables<"user_course_certificates">[] = [];
+      completionByUserCourse.forEach((completedSet, key) => {
+        const [userId, courseId] = key.split(":");
+        const requiredModules = courseModulesMap[courseId] ?? [];
+        if (requiredModules.length === 0) return;
+        const completedAll = requiredModules.every((moduleId) => completedSet.has(moduleId));
+        if (!completedAll) return;
+        mockCertificates.push({
+          id: `cert-${userId}-${courseId}`,
+          user_id: userId,
+          course_id: courseId,
+          completion_rate: 100,
+          issued_at: new Date().toISOString(),
+          certificate_url: null,
+          metadata: {},
+        });
+      });
+
+      setProgressRows(mockProgressRows);
+      setNotesRows(mockNoteRows);
+      setCertificateRows(mockCertificates);
       return;
     }
 
-    const [coursesResult, modulesResult] = await Promise.all([
+    const [coursesResult, modulesResult, progressResult, notesResult, certificatesResult] = await Promise.all([
       supabase.from("courses").select("*").order("sort_order", { ascending: true }),
       supabase.from("course_modules").select("*").order("sort_order", { ascending: true }),
+      supabase.from("user_course_progress").select("*"),
+      supabase.from("user_course_notes").select("*"),
+      supabase.from("user_course_certificates").select("*"),
     ]);
 
     if (coursesResult.error) {
@@ -124,9 +198,24 @@ export default function AdminCoursesPage() {
       setErrorMessage(modulesResult.error.message);
       return;
     }
+    if (progressResult.error) {
+      setErrorMessage(progressResult.error.message);
+      return;
+    }
+    if (notesResult.error) {
+      setErrorMessage(notesResult.error.message);
+      return;
+    }
+    if (certificatesResult.error) {
+      setErrorMessage(certificatesResult.error.message);
+      return;
+    }
 
     setCourses((coursesResult.data ?? []).map(mapCourse));
     setModules((modulesResult.data ?? []).map(mapModule));
+    setProgressRows(progressResult.data ?? []);
+    setNotesRows(notesResult.data ?? []);
+    setCertificateRows(certificatesResult.data ?? []);
   }, [supabase]);
 
   useEffect(() => {
@@ -140,6 +229,180 @@ export default function AdminCoursesPage() {
       return acc;
     }, {});
   }, [modules]);
+
+  const lmsAnalytics = useMemo(() => {
+    const activeLearners = new Set(progressRows.map((row) => row.user_id)).size;
+    const completedRows = progressRows.filter((row) => row.completed);
+    const totalWatchSeconds = progressRows.reduce((sum, row) => sum + row.watch_time_seconds, 0);
+    const avgWatchMinutes =
+      progressRows.length > 0 ? Math.round(totalWatchSeconds / progressRows.length / 60) : 0;
+    const certificatesIssued = certificateRows.length;
+
+    const topCourses = courses
+      .map((course) => {
+        const moduleIds = (modulesByCourse[course.id] ?? []).map((module) => module.id);
+        const courseRows = progressRows.filter((row) => moduleIds.includes(row.module_id));
+        const uniqueLearners = new Set(courseRows.map((row) => row.user_id)).size;
+        const completedModules = courseRows.filter((row) => row.completed).length;
+        const denominator = uniqueLearners * Math.max(moduleIds.length, 1);
+        const completionRate = denominator > 0 ? Math.round((completedModules / denominator) * 100) : 0;
+        const certs = certificateRows.filter((row) => row.course_id === course.id).length;
+        return {
+          id: course.id,
+          title: course.title,
+          learners: uniqueLearners,
+          completionRate,
+          certificates: certs,
+        };
+      })
+      .sort((a, b) => b.certificates - a.certificates || b.completionRate - a.completionRate)
+      .slice(0, 5);
+
+    return {
+      activeLearners,
+      completedRows: completedRows.length,
+      notesCount: notesRows.length,
+      avgWatchMinutes,
+      certificatesIssued,
+      topCourses,
+    };
+  }, [certificateRows, courses, modulesByCourse, notesRows.length, progressRows]);
+
+  async function fileToDataUrl(file: File): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadResourceAsset(file: File): Promise<{ url: string; warning?: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/admin/lms/upload/resource", {
+      method: "POST",
+      body: formData,
+    });
+    const json = (await response.json()) as { url?: string; warning?: string; error?: string };
+    if (!response.ok || !json.url) {
+      throw new Error(json.error || "Resource upload failed");
+    }
+    return { url: json.url, warning: json.warning };
+  }
+
+  async function uploadVideoToCloudflare(file: File): Promise<{ cloudflareVideoId: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch("/api/admin/lms/upload/cloudflare", {
+      method: "POST",
+      body: formData,
+    });
+    const json = (await response.json()) as { cloudflareVideoId?: string; error?: string };
+    if (!response.ok || !json.cloudflareVideoId) {
+      throw new Error(json.error || "Cloudflare upload failed");
+    }
+    return { cloudflareVideoId: json.cloudflareVideoId };
+  }
+
+  async function handleNewCourseImageUpload(file: File) {
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setNewCourse((current) => ({ ...current, coverImage: dataUrl }));
+      setUploadMessage("Course thumbnail attached.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleEditingCourseImageUpload(file: File) {
+    if (!editingCourse) return;
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setEditingCourse((current) => (current ? { ...current, coverImage: dataUrl } : current));
+      setUploadMessage("Course thumbnail attached.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleDraftResourceUpload(courseId: string, file: File) {
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const { url, warning } = await uploadResourceAsset(file);
+      setModuleDraft((current) => ({
+        ...current,
+        [courseId]: {
+          ...current[courseId],
+          resourceUrl: url,
+        },
+      }));
+      setUploadMessage(warning ?? "Resource uploaded.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload resource");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleDraftVideoUpload(courseId: string, file: File) {
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const { cloudflareVideoId } = await uploadVideoToCloudflare(file);
+      setModuleDraft((current) => ({
+        ...current,
+        [courseId]: {
+          ...current[courseId],
+          cloudflareVideoId,
+        },
+      }));
+      setUploadMessage("Video uploaded to Cloudflare Stream.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload video");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleEditingModuleResourceUpload(file: File) {
+    if (!editingModule) return;
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const { url, warning } = await uploadResourceAsset(file);
+      setEditingModule((current) => (current ? { ...current, resourceUrl: url } : current));
+      setUploadMessage(warning ?? "Resource uploaded.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload resource");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function handleEditingModuleVideoUpload(file: File) {
+    if (!editingModule) return;
+    setUploadMessage(null);
+    setIsUploading(true);
+    try {
+      const { cloudflareVideoId } = await uploadVideoToCloudflare(file);
+      setEditingModule((current) => (current ? { ...current, cloudflareVideoId } : current));
+      setUploadMessage("Video uploaded to Cloudflare Stream.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to upload video");
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function saveCourse() {
     if (!newCourse.title || !newCourse.description) return false;
@@ -261,6 +524,15 @@ export default function AdminCoursesPage() {
 
     const existing = modulesByCourse[courseId] || [];
     const moduleType = draft.type ?? "video";
+    const normalizedQuiz =
+      moduleType === "quiz"
+        ? normalizeQuizPayload(draft.quizPayload ?? createEmptyQuizPayload())
+        : undefined;
+    if (moduleType === "quiz" && !isQuizPayloadReady(normalizedQuiz!)) {
+      setErrorMessage("Quiz modules need at least one complete question with two options.");
+      setIsSaving(false);
+      return;
+    }
     const cloudflareVideoId =
       draft.cloudflareVideoId ||
       (moduleType === "video" ? draft.resourceUrl || "demo" : "demo");
@@ -278,11 +550,13 @@ export default function AdminCoursesPage() {
         resourceUrl: draft.resourceUrl,
         notes: draft.notes,
         passThreshold: draft.passThreshold ?? 70,
+        quizPayload: normalizedQuiz,
       };
       const next = [newModule, ...modules];
       setModules(next);
       setMockModules(next);
     } else {
+      const quizPayloadJson = (normalizedQuiz ?? null) as Json | null;
       const { error } = await supabase.from("course_modules").insert({
         course_id: courseId,
         title: draft.title,
@@ -294,6 +568,7 @@ export default function AdminCoursesPage() {
         resource_url: draft.resourceUrl || null,
         notes: draft.notes || null,
         pass_threshold: draft.passThreshold ?? 70,
+        quiz_payload: quizPayloadJson,
       });
 
       if (error) {
@@ -314,6 +589,7 @@ export default function AdminCoursesPage() {
         resourceUrl: "",
         cloudflareVideoId: "",
         passThreshold: 70,
+        quizPayload: createEmptyQuizPayload(),
       },
     });
     setIsSaving(false);
@@ -333,9 +609,20 @@ export default function AdminCoursesPage() {
       setMockModules(next);
       setEditingModule(null);
       setIsSaving(false);
-        return;
+      return;
     }
 
+    const normalizedQuiz =
+      editingModule.type === "quiz"
+        ? normalizeQuizPayload(editingModule.quizPayload ?? createEmptyQuizPayload())
+        : null;
+    if (editingModule.type === "quiz" && normalizedQuiz && !isQuizPayloadReady(normalizedQuiz)) {
+      setErrorMessage("Quiz modules need at least one complete question with two options.");
+      setIsSaving(false);
+      return;
+    }
+
+    const quizPayloadJson = normalizedQuiz as Json | null;
     const { error } = await supabase
       .from("course_modules")
       .update({
@@ -347,6 +634,7 @@ export default function AdminCoursesPage() {
         resource_url: editingModule.resourceUrl || null,
         notes: editingModule.notes || null,
         pass_threshold: editingModule.passThreshold ?? 70,
+        quiz_payload: quizPayloadJson,
       })
       .eq("id", editingModule.id);
 
@@ -444,6 +732,27 @@ export default function AdminCoursesPage() {
                     value={newCourse.coverImage ?? ""}
                     onChange={(e) => setNewCourse({ ...newCourse, coverImage: e.target.value })}
                   />
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="new-course-image"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Upload Image
+                    </Label>
+                    <input
+                      id="new-course-image"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleNewCourseImageUpload(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    {isUploading && <span className="text-[10px] text-[#999999]">Uploading...</span>}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Tags (comma separated)</Label>
@@ -510,6 +819,49 @@ export default function AdminCoursesPage() {
         <div className="rounded-xl border border-[#a36d4c]/30 bg-[#a36d4c]/10 px-4 py-3 text-sm text-[#7a5038]">
           {errorMessage}
         </div>
+      )}
+      {uploadMessage && (
+        <div className="rounded-xl border border-[#2b4d24]/20 bg-[#2b4d24]/5 px-4 py-3 text-sm text-[#2b4d24]">
+          {uploadMessage}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {[
+          { label: "Active Learners", value: lmsAnalytics.activeLearners },
+          { label: "Module Completions", value: lmsAnalytics.completedRows },
+          { label: "Notes Saved", value: lmsAnalytics.notesCount },
+          { label: "Avg Watch (min)", value: lmsAnalytics.avgWatchMinutes },
+          { label: "Certificates", value: lmsAnalytics.certificatesIssued },
+        ].map((metric) => (
+          <Card key={metric.label} className="glass-subtle border-0">
+            <CardContent className="p-4">
+              <p className="text-[11px] uppercase tracking-wide text-[#8b957b]">{metric.label}</p>
+              <p className="mt-1 text-2xl font-semibold text-[#1a1a1a]">{metric.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {lmsAnalytics.topCourses.length > 0 && (
+        <Card className="glass-subtle border-0">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-lg">Top Course Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {lmsAnalytics.topCourses.map((row) => (
+              <div
+                key={row.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#c5ccc2]/50 px-3 py-2"
+              >
+                <span className="text-sm text-[#1a1a1a]">{row.title}</span>
+                <span className="text-xs text-[#666666]">
+                  {row.learners} learners • {row.completionRate}% completion • {row.certificates} certificates
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6">
@@ -648,6 +1000,25 @@ export default function AdminCoursesPage() {
                         })
                       }
                     />
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor={`resource-upload-${course.id}`}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload Resource
+                      </Label>
+                      <input
+                        id={`resource-upload-${course.id}`}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleDraftResourceUpload(course.id, file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -666,6 +1037,26 @@ export default function AdminCoursesPage() {
                         })
                       }
                     />
+                    <div className="flex items-center gap-2">
+                      <Label
+                        htmlFor={`video-upload-${course.id}`}
+                        className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload Video
+                      </Label>
+                      <input
+                        id={`video-upload-${course.id}`}
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleDraftVideoUpload(course.id, file);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Quiz Pass %</Label>
@@ -686,6 +1077,22 @@ export default function AdminCoursesPage() {
                     />
                   </div>
                 </div>
+                {(moduleDraft[course.id]?.type ?? "video") === "quiz" && (
+                  <QuizBuilder
+                    payload={normalizeQuizPayload(
+                      moduleDraft[course.id]?.quizPayload ?? createEmptyQuizPayload()
+                    )}
+                    onChange={(payload) =>
+                      setModuleDraft((current) => ({
+                        ...current,
+                        [course.id]: {
+                          ...current[course.id],
+                          quizPayload: payload,
+                        },
+                      }))
+                    }
+                  />
+                )}
                 <div className="space-y-2">
                   <Label>Module Notes (optional)</Label>
                   <Textarea
@@ -782,6 +1189,26 @@ export default function AdminCoursesPage() {
                     value={editingCourse.coverImage ?? ""}
                     onChange={(e) => setEditingCourse({ ...editingCourse, coverImage: e.target.value })}
                   />
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="edit-course-image"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      Upload Image
+                    </Label>
+                    <input
+                      id="edit-course-image"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleEditingCourseImageUpload(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Tags</Label>
@@ -905,6 +1332,25 @@ export default function AdminCoursesPage() {
                     setEditingModule({ ...editingModule, resourceUrl: e.target.value })
                   }
                 />
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="edit-module-resource-upload"
+                    className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload Resource
+                  </Label>
+                  <input
+                    id="edit-module-resource-upload"
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handleEditingModuleResourceUpload(file);
+                      e.currentTarget.value = "";
+                    }}
+                  />
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -915,6 +1361,26 @@ export default function AdminCoursesPage() {
                       setEditingModule({ ...editingModule, cloudflareVideoId: e.target.value })
                     }
                   />
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor="edit-module-video-upload"
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-xs text-[#666666]"
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      Upload Video
+                    </Label>
+                    <input
+                      id="edit-module-video-upload"
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleEditingModuleVideoUpload(file);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Quiz Pass %</Label>
@@ -929,6 +1395,21 @@ export default function AdminCoursesPage() {
                   />
                 </div>
               </div>
+              {(editingModule.type ?? "video") === "quiz" && (
+                <QuizBuilder
+                  payload={normalizeQuizPayload(editingModule.quizPayload ?? createEmptyQuizPayload())}
+                  onChange={(payload) =>
+                    setEditingModule((current) =>
+                      current
+                        ? {
+                            ...current,
+                            quizPayload: payload,
+                          }
+                        : current
+                    )
+                  }
+                />
+              )}
               <div className="space-y-2">
                 <Label>Module Notes</Label>
                 <Textarea

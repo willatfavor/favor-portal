@@ -18,6 +18,14 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - Partner API routes already exist and are the intended integration seams:
   - `app/api/giving/history/route.ts`
   - `app/api/courses/route.ts`
+- LMS is production-ready in Supabase mode:
+  - notes persist in `user_course_notes`
+  - progress persists in `user_course_progress`
+  - completion certificates upsert into `user_course_certificates`
+  - quiz modules use `course_modules.quiz_payload`
+- Admin upload routes are already scaffolded:
+  - `POST /api/admin/lms/upload/resource`
+  - `POST /api/admin/lms/upload/cloudflare`
 
 ## Required Environment Variables
 ### Required today
@@ -31,6 +39,8 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 - `BLACKBAUD_API_KEY` (or replacement if SKY auth strategy differs)
 - Any SKY OAuth/client credentials required by your final auth flow
 - `NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN` (required for LMS video embed UX)
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (required for admin Cloudflare video uploads)
+- `SUPABASE_LMS_ASSETS_BUCKET` (optional override, defaults to `lms-assets`)
 
 ## Required Migrations Before SKY Work
 - `database/migrations/001_initial_schema.sql`
@@ -59,14 +69,16 @@ Implement Blackbaud SKY as the data source for authenticated portal users and pa
 ## LMS Readiness Notes (for SKY PRs)
 - LMS progress writes now assume one row per `user_id + module_id` and depend on conflict-safe upserts.
 - Course detail UX now enforces sequential module unlock (module N+1 unlocks after module N is complete).
-- Course completion can export a local completion summary text file from the client.
-- Notes currently persist only in dev bypass mode (`isDevBypass`) and are not server-backed.
+- Notes persist in live mode via `user_course_notes` upsert.
+- Quiz pass/fail grading runs client-side from `quiz_payload` and marks module complete on pass.
+- Course completion upserts a certificate record and allows local completion/certificate file download.
+- Upload APIs are admin-gated by `users.is_admin`.
 
 ### LMS Follow-Ups for Integration Developer
-1. Add/align course metadata columns needed by UI in Supabase (for example: status, lock state, module type/resource fields) and update generated types.
-2. Add a persistent notes store (table + API/queries) so note saving works in non-dev environments.
-3. Wire real video watch telemetry (Cloudflare Stream events or player callbacks) into `watch_time_seconds` updates.
-4. Decide final completion artifact strategy (text summary vs generated certificate) and implement server-backed output if required.
+1. Wire real video watch telemetry (Cloudflare Stream events or player callbacks) into `watch_time_seconds` updates.
+2. Replace local certificate HTML download with server-generated certificate artifacts if compliance/reporting requires immutable files.
+3. Decide whether `resource` upload should remain public bucket based or move to signed URL/download tokens.
+4. Keep SKY-related changes isolated from LMS contracts unless requirements force schema/API changes.
 
 ## Known Risks to Address in SKY PRs
 1. User identity assumptions between Supabase auth IDs and `users` table IDs.

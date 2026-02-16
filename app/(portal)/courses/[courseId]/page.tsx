@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/portal/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getStreamUrl } from "@/lib/cloudflare/client";
+import { QuizResult, gradeQuiz, normalizeQuizPayload } from "@/lib/lms/quiz";
 import {
   ArrowRight,
   BookOpen,
@@ -58,6 +59,11 @@ export default function CourseDetailPage() {
   const [noteUpdatedAt, setNoteUpdatedAt] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [noteSaved, setNoteSaved] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [quizError, setQuizError] = useState<string | null>(null);
+  const [certificateIssuedAt, setCertificateIssuedAt] = useState<string | null>(null);
+  const [certificateError, setCertificateError] = useState<string | null>(null);
 
   const course = useMemo(
     () => courses.find((c) => c.id === courseId),
@@ -156,6 +162,56 @@ export default function CourseDetailPage() {
     void loadNote();
   }, [activeModuleId, supabase, user]);
 
+  useEffect(() => {
+    setQuizAnswers({});
+    setQuizResult(null);
+    setQuizError(null);
+  }, [activeModuleId]);
+
+  useEffect(() => {
+    if (!user || !course || !isCourseComplete) return;
+    if (isDevBypass) {
+      setCertificateIssuedAt(new Date().toISOString());
+      return;
+    }
+
+    const currentUserId = user.id;
+    const currentCourseId = course.id;
+    const currentCourseTitle = course.title;
+    const currentModuleCount = courseModules.length;
+
+    async function issueCertificate() {
+      setCertificateError(null);
+      const issuedAt = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("user_course_certificates")
+        .upsert(
+          {
+            user_id: currentUserId,
+            course_id: currentCourseId,
+            completion_rate: 100,
+            issued_at: issuedAt,
+            metadata: {
+              courseTitle: currentCourseTitle,
+              moduleCount: currentModuleCount,
+            },
+          },
+          { onConflict: "user_id,course_id" }
+        )
+        .select("*")
+        .single();
+
+      if (error) {
+        setCertificateError("Unable to issue certificate right now.");
+        return;
+      }
+
+      setCertificateIssuedAt(data.issued_at ?? issuedAt);
+    }
+
+    void issueCertificate();
+  }, [course, courseModules.length, isCourseComplete, supabase, user]);
+
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -181,6 +237,8 @@ export default function CourseDetailPage() {
   const activeModuleType = activeModule?.type ?? "video";
   const canPersistNotes = Boolean(user?.id && activeModule?.id);
   const activeModuleUnlocked = activeModule ? Boolean(moduleUnlockMap.get(activeModule.id)) : false;
+  const activeQuizPayload =
+    activeModuleType === "quiz" ? normalizeQuizPayload(activeModule?.quizPayload) : null;
   const activeModuleIndex = activeModule
     ? courseModules.findIndex((module) => module.id === activeModule.id)
     : -1;
@@ -242,12 +300,75 @@ export default function CourseDetailPage() {
     void persistNote();
   }
 
+  function submitQuizAttempt() {
+    if (!activeModule || !activeQuizPayload) return;
+    if (!activeModuleUnlocked) return;
+
+    const unanswered = activeQuizPayload.questions.filter(
+      (question) => quizAnswers[question.id] === undefined
+    );
+    if (unanswered.length > 0) {
+      setQuizError("Please answer every question before submitting.");
+      return;
+    }
+
+    const result = gradeQuiz(
+      activeQuizPayload,
+      quizAnswers,
+      activeModule.passThreshold ?? 70
+    );
+    setQuizResult(result);
+    setQuizError(null);
+    if (result.passed) {
+      void updateProgress(activeModule.id, {
+        completed: true,
+        watchTimeSeconds: activeModule.durationSeconds,
+      });
+    }
+  }
+
+  function downloadCertificate() {
+    if (!isCourseComplete || !course) return;
+    const issuedDate = certificateIssuedAt
+      ? new Date(certificateIssuedAt).toLocaleDateString()
+      : new Date().toLocaleDateString();
+    const name = user ? `${user.firstName} ${user.lastName}` : "Favor Partner";
+    const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Favor Certificate</title>
+  <style>
+    body { font-family: Georgia, serif; background: #f5f3ef; margin: 0; padding: 48px; }
+    .card { background: #fffef9; border: 2px solid #2b4d24; border-radius: 16px; padding: 36px; text-align: center; }
+    .brand { color: #2b4d24; letter-spacing: 2px; font-size: 12px; text-transform: uppercase; }
+    h1 { color: #1a1a1a; margin: 16px 0 8px; font-size: 40px; }
+    .name { font-size: 30px; color: #2b4d24; margin: 20px 0; }
+    .course { font-size: 20px; color: #333; margin: 8px 0 20px; }
+    .meta { color: #666; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">Favor International</div>
+    <h1>Certificate of Completion</h1>
+    <div class="meta">This certifies that</div>
+    <div class="name">${name}</div>
+    <div class="meta">has successfully completed</div>
+    <div class="course">${course.title}</div>
+    <div class="meta">Issued on ${issuedDate}</div>
+  </div>
+</body>
+</html>`;
+    downloadTextFile(`${sanitizeFilename(course.title)}-certificate.html`, html);
+  }
+
   function downloadActiveNote() {
-    if (!activeModule || !noteValue.trim()) return;
-    const safeCourseTitle = sanitizeFilename(course!.title);
+    if (!course || !activeModule || !noteValue.trim()) return;
+    const safeCourseTitle = sanitizeFilename(course.title);
     const safeModuleTitle = sanitizeFilename(activeModule.title);
     const body = [
-      `Course: ${course!.title}`,
+      `Course: ${course.title}`,
       `Module: ${activeModule.title}`,
       `Downloaded: ${new Date().toLocaleString()}`,
       "",
@@ -257,7 +378,7 @@ export default function CourseDetailPage() {
   }
 
   function downloadCompletionSummary() {
-    if (!isCourseComplete) return;
+    if (!isCourseComplete || !course) return;
     const moduleLines = courseModules.map((module, index) => {
       const moduleProgress = progressMap.get(module.id);
       const state = moduleProgress?.completed ? "Completed" : "Incomplete";
@@ -267,13 +388,13 @@ export default function CourseDetailPage() {
       "Favor Course Completion Summary",
       `Learner: ${user ? `${user.firstName} ${user.lastName}` : "Unknown User"}`,
       `Email: ${user?.email ?? "Unknown"}`,
-      `Course: ${course!.title}`,
+      `Course: ${course.title}`,
       `Completed On: ${new Date().toLocaleDateString()}`,
       `Completion Rate: ${completionRate}%`,
       "",
       ...moduleLines,
     ].join("\n");
-    downloadTextFile(`${sanitizeFilename(course!.title)}-completion-summary.txt`, body);
+    downloadTextFile(`${sanitizeFilename(course.title)}-completion-summary.txt`, body);
   }
 
   function getCompletionButtonText() {
@@ -329,6 +450,10 @@ export default function CourseDetailPage() {
             <Button variant="outline" onClick={downloadCompletionSummary}>
               <Download className="mr-2 h-4 w-4" />
               Download Completion Summary
+            </Button>
+            <Button variant="outline" onClick={downloadCertificate}>
+              <Download className="mr-2 h-4 w-4" />
+              Download Certificate
             </Button>
           </CardContent>
         </Card>
@@ -423,6 +548,58 @@ export default function CourseDetailPage() {
                   />
                 </div>
               )}
+              {activeModuleType === "quiz" && activeQuizPayload && (
+                <div className="space-y-4 rounded-xl border border-[#c5ccc2]/50 bg-white/70 p-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-[#8b957b]">
+                      Knowledge Check
+                    </p>
+                    <p className="text-sm text-[#666666]">
+                      Pass score: {activeModule?.passThreshold ?? 70}%
+                    </p>
+                  </div>
+                  {activeQuizPayload.questions.map((question, idx) => (
+                    <div key={question.id} className="space-y-2 rounded-lg border border-[#c5ccc2]/40 bg-white p-3">
+                      <p className="text-sm font-medium text-[#1a1a1a]">
+                        {idx + 1}. {question.prompt || "Untitled question"}
+                      </p>
+                      <div className="space-y-2">
+                        {question.options.map((option, optionIdx) => (
+                          <button
+                            key={`${question.id}-option-${optionIdx}`}
+                            type="button"
+                            onClick={() =>
+                              setQuizAnswers((current) => ({
+                                ...current,
+                                [question.id]: optionIdx,
+                              }))
+                            }
+                            className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+                              quizAnswers[question.id] === optionIdx
+                                ? "border-[#2b4d24] bg-[#2b4d24]/10 text-[#1a1a1a]"
+                                : "border-[#d8d8d8] bg-white text-[#666666]"
+                            }`}
+                          >
+                            {option || `Option ${optionIdx + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button variant="outline" onClick={submitQuizAttempt} disabled={!activeModuleUnlocked}>
+                      Submit Quiz
+                    </Button>
+                    {quizResult && (
+                      <span className={quizResult.passed ? "text-sm text-[#2b4d24]" : "text-sm text-[#a36d4c]"}>
+                        Score: {quizResult.scorePercent}% ({quizResult.correctAnswers}/{quizResult.totalQuestions}){" "}
+                        {quizResult.passed ? "- Passed" : "- Try again"}
+                      </span>
+                    )}
+                  </div>
+                  {quizError && <p className="text-xs text-[#a36d4c]">{quizError}</p>}
+                </div>
+              )}
               <p className="text-sm text-[#666666]">
                 {activeModule?.description || "Follow along with this module to deepen your understanding."}
               </p>
@@ -502,6 +679,7 @@ export default function CourseDetailPage() {
                 </Button>
               </div>
               {noteError && <p className="text-xs text-[#a36d4c]">{noteError}</p>}
+              {certificateError && <p className="text-xs text-[#a36d4c]">{certificateError}</p>}
             </CardContent>
           </Card>
         </div>

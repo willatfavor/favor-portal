@@ -5,11 +5,17 @@
 - Role-aware LMS access policies in Postgres RLS (course/module reads are no longer globally readable by any authenticated user).
 - `users.is_admin` support for admin-gated LMS authoring.
 - Persistent learner notes via `user_course_notes`.
-- Course certificate storage scaffold via `user_course_certificates`.
+- Quiz authoring + runtime grading via `course_modules.quiz_payload` and `pass_threshold`.
+- Course certificate issuance on completion via `user_course_certificates`.
+- Admin upload endpoints:
+  - `POST /api/admin/lms/upload/resource` (Supabase Storage fallback to data URL)
+  - `POST /api/admin/lms/upload/cloudflare` (Cloudflare Stream upload)
 - Admin course/module management page (`/admin/courses`) uses Supabase data in live mode and keeps dev bypass fallback.
 - Course detail page supports:
   - sequential unlock controlled by `courses.enforce_sequential`
   - persisted notes in live mode
+  - in-module quiz UI with pass/fail scoring
+  - certificate download button after full course completion
   - Cloudflare Stream embed support when a stream ID + public subdomain are configured
   - downloadable completion summary + notes exports
 
@@ -19,8 +25,12 @@
 2. Refresh generated DB types if your workflow regenerates `types/supabase.ts`.
 3. Set env vars:
    - `NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN` (client embed)
+   - `CLOUDFLARE_ACCOUNT_ID` (admin video upload API)
+   - `CLOUDFLARE_API_TOKEN` (admin video upload API)
+   - `SUPABASE_LMS_ASSETS_BUCKET` (optional, defaults to `lms-assets`)
    - existing Cloudflare/Supabase env vars already documented in `.env.local.example`
-4. Ensure at least one admin user has `users.is_admin = true`.
+4. Ensure the Supabase storage bucket for LMS assets exists and is public if using public URLs.
+5. Ensure at least one admin user has `users.is_admin = true`.
 
 ## SKY Developer Notes
 - LMS auth and data permissions now rely on the `users` row tied to the authenticated session user.
@@ -28,6 +38,6 @@
 - Course progress and notes are safe to keep local to Supabase while SKY remains the source of truth for donor/constituent data.
 
 ## Follow-Ups (Optional Enhancements)
-- Add quiz-attempt table and graded scoring flow from `course_modules.quiz_payload`.
-- Add signed/server-generated certificate assets (PDF) and connect to `user_course_certificates.certificate_url`.
-- Add learner analytics dashboard using `watch_time_seconds` and notes/course completion trends.
+- Add a quiz-attempt history table if per-attempt audit history is needed.
+- Replace client HTML certificate download with server-generated/signed PDF artifacts and persist `certificate_url`.
+- Add deeper learner analytics dimensions (drop-off by module, cohort trends, time-to-complete).

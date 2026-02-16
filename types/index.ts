@@ -106,7 +106,7 @@ export interface CourseModule {
   type?: 'video' | 'reading' | 'quiz';
   resourceUrl?: string;
   notes?: string;
-  quizPayload?: Record<string, unknown>;
+  quizPayload?: unknown;
   passThreshold?: number;
 }
 

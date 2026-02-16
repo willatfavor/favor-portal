@@ -21,3 +21,7 @@ These are also enforced in CI via `.github/workflows/ci.yml`.
 - Link to `docs/SKY_INTEGRATION_HANDOFF.md` in the PR description.
 - If touching LMS routes/components, include a short note on module unlock logic and progress-write behavior.
 - If touching LMS schema/contracts, link `docs/LMS_PRODUCTION_HANDOFF.md` and call out migration impacts explicitly.
+- If touching LMS quiz/certificate/upload behavior, call out any contract changes for:
+  - `course_modules.quiz_payload`
+  - `user_course_certificates`
+  - `/api/admin/lms/upload/*`
