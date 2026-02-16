@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { MagicLinkForm } from '@/components/auth/magic-link-form';
+import { APP_CONFIG } from '@/lib/constants';
 
 export default function LoginPage() {
   return (
@@ -9,7 +10,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Image
-            src="https://storage.googleapis.com/msgsndr/LblL0AiRWSIvV6fFQuRT/media/67bf4d8383ae0d6d7dc507fe.png"
+            src={APP_CONFIG.logo}
             alt="Favor International"
             width={240}
             height={64}
