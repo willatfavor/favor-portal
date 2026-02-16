@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { amount, frequency, designation } = body;
+    const { amount, frequency } = body;
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate next charge date based on frequency
     const now = new Date();
-    let nextChargeDate = new Date();
+    const nextChargeDate = new Date();
     
     switch (frequency) {
       case 'monthly':

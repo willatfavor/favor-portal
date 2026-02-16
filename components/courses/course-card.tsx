@@ -1,6 +1,7 @@
 "use client";
 
 import { Course } from "@/types";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,13 @@ export function CourseCard({ course, progress, totalModules }: CourseCardProps) 
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gradient-to-br from-[#2b4d24]/20 to-[#2b4d24]/10">
         {course.thumbnailUrl ? (
-          <img
+          <Image
             src={course.thumbnailUrl}
             alt={course.title}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover"
+            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center">

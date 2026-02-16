@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { User, ConstituentType } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import { isDevBypass } from '@/lib/dev-mode';
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
 
-  function loadDevUser() {
+  const loadDevUser = useCallback(() => {
     initMockStore();
     const activeId = getActiveMockUserId();
     const activeUser = getMockUserById(activeId);
@@ -53,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         metadata: { source: 'dev' },
       });
     }
-  }
+  }, []);
 
-  async function fetchUser() {
+  const fetchUser = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (isDevBypass) {
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUser, loadDevUser, supabase]);
 
   async function signOut() {
     if (isDevBypass) {

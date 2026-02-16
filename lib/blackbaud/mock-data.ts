@@ -3,7 +3,7 @@
  * This simulates what would come from Blackbaud SKY API
  */
 
-import { ConstituentType, BlackbaudConstituent, BlackbaudGift } from '@/types';
+import { BlackbaudConstituent, BlackbaudGift } from '@/types';
 
 export const mockConstituents: BlackbaudConstituent[] = [
   {

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -16,10 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  TrendingUp,
   Heart,
   Globe,
-  Users,
   Droplets,
   BookOpen,
   Stethoscope,
@@ -44,9 +41,8 @@ const IMPACT_RATES = {
 
 export default function ImpactPage() {
   const { user } = useAuth();
-  const { gifts, totalGiven, ytdGiven, isLoading } = useGiving(user?.id);
+  const { gifts, isLoading } = useGiving(user?.id);
   const [timeRange, setTimeRange] = useState<"lifetime" | "year" | "quarter" | "month">("lifetime");
-  const [shareOpen, setShareOpen] = useState(false);
 
   const impactData = useMemo(() => {
     // Calculate impact based on gifts
@@ -116,7 +112,6 @@ export default function ImpactPage() {
       navigator.clipboard.writeText(text);
       toast.success("Impact summary copied to clipboard!");
     }
-    setShareOpen(false);
   }
 
   function downloadImpactReport() {
@@ -202,7 +197,7 @@ export default function ImpactPage() {
               <h2 className="text-4xl font-bold">{formatCurrency(impactData.totalAmount)}</h2>
               <p className="text-white/70">
                 Through {impactData.giftCount} {impactData.giftCount === 1 ? "gift" : "gifts"}, 
-                you've made a real difference in communities around the world.
+                you&apos;ve made a real difference in communities around the world.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -297,10 +298,13 @@ export default function ContentDetailPage() {
         {/* Cover image */}
         {item.coverImage && (
           <div className="relative aspect-[16/7] bg-gradient-to-br from-[#FAF9F6] to-[#F5F3EF]">
-            <img
+            <Image
               src={item.coverImage}
               alt={item.title}
-              className="h-full w-full object-cover"
+              fill
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="object-cover"
+              unoptimized
             />
           </div>
         )}

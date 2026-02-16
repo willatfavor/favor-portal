@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, FileText, Calendar, DollarSign, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import { Building2, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useGrants } from '@/hooks/use-grants';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -15,7 +13,6 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 export default function FoundationDashboardPage() {
   const { user } = useAuth();
   const { grants, isLoading, totalGranted, activeGrants } = useGrants(user?.id);
-  const [selectedGrant, setSelectedGrant] = useState<typeof grants[0] | null>(null);
 
   if (!user || user.constituentType !== 'foundation') {
     return (

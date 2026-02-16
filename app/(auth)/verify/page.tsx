@@ -47,7 +47,7 @@ function VerifyContent() {
         setTimeout(() => {
           router.push('/dashboard');
         }, 1500);
-      } catch (error) {
+      } catch {
         setStatus('error');
         toast.error('Failed to verify login link. Please try again.');
       }

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
 import { useContent } from "@/hooks/use-content";
 import { ContentItem } from "@/types";
@@ -321,10 +322,13 @@ function ContentPageContent() {
                 <Card className="glass-hover overflow-hidden">
                   <div className="relative aspect-[16/9] bg-gradient-to-br from-[#FAF9F6] to-[#F5F3EF]">
                     {item.coverImage && (
-                      <img
+                      <Image
                         src={item.coverImage}
                         alt={item.title}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        unoptimized
                       />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -561,10 +565,13 @@ function ContentGridCard({
     <Card className="glass-hover overflow-hidden group">
       {item.coverImage && (
         <div className="relative aspect-[2/1] bg-gradient-to-br from-[#FAF9F6] to-[#F5F3EF]">
-          <img
+          <Image
             src={item.coverImage}
             alt={item.title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            unoptimized
           />
         </div>
       )}
@@ -658,10 +665,13 @@ function ContentListCard({
       <CardContent className="p-4 flex gap-4">
         {item.coverImage ? (
           <div className="hidden sm:block w-28 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#FAF9F6] to-[#F5F3EF]">
-            <img
+            <Image
               src={item.coverImage}
               alt={item.title}
+              width={112}
+              height={80}
               className="h-full w-full object-cover"
+              unoptimized
             />
           </div>
         ) : (

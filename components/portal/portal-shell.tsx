@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -105,10 +106,13 @@ export function PortalShell({ children }: PortalShellProps) {
               <SheetContent side="left" className="w-72 glass-elevated p-0 border-r-0">
                 <SheetHeader className="border-b border-[#c5ccc2]/20 px-5 py-4">
                   <SheetTitle className="flex items-center gap-2">
-                    <img
+                    <Image
                       src={APP_CONFIG.logo}
                       alt="Favor International"
-                      className="h-7"
+                      width={126}
+                      height={28}
+                      className="h-7 w-auto"
+                      unoptimized
                     />
                   </SheetTitle>
                 </SheetHeader>
@@ -150,10 +154,13 @@ export function PortalShell({ children }: PortalShellProps) {
             </Sheet>
 
             <Link href="/dashboard" className="flex items-center gap-1.5">
-              <img
+              <Image
                 src={APP_CONFIG.logo}
                 alt="Favor International"
-                className="h-6"
+                width={108}
+                height={24}
+                className="h-6 w-auto"
+                unoptimized
               />
             </Link>
 

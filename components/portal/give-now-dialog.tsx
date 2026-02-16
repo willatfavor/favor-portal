@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Heart, CheckCircle, Download, ArrowLeft, ArrowRight } from "lucide-react";
 import { addMockGift, recordActivity } from "@/lib/mock-store";
 import { GIVING_DESIGNATIONS } from "@/lib/portal-mock-data";

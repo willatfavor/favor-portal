@@ -68,13 +68,19 @@ const STORAGE_KEYS = {
 };
 
 const hasWindow = typeof window !== 'undefined';
+const serverStore = new Map<string, unknown>();
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function getItem<T>(key: string, fallback: T): T {
-  if (!hasWindow) return clone(fallback);
+  if (!hasWindow) {
+    if (!serverStore.has(key)) {
+      serverStore.set(key, clone(fallback));
+    }
+    return clone(serverStore.get(key) as T);
+  }
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : clone(fallback);
@@ -84,7 +90,10 @@ function getItem<T>(key: string, fallback: T): T {
 }
 
 function setItem<T>(key: string, value: T): void {
-  if (!hasWindow) return;
+  if (!hasWindow) {
+    serverStore.set(key, clone(value));
+    return;
+  }
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {

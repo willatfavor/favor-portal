@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,6 @@ import {
   Calendar,
   CreditCard,
 } from "lucide-react";
-import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
@@ -100,7 +99,7 @@ export default function RecurringGiftsPage() {
       setIsCreateOpen(false);
       setCreateAmount("");
       refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to create recurring gift");
     } finally {
       setIsCreating(false);
@@ -128,7 +127,7 @@ export default function RecurringGiftsPage() {
       toast.success("Recurring gift updated!");
       setEditingGift(null);
       refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update recurring gift");
     } finally {
       setProcessingId(null);
@@ -149,7 +148,7 @@ export default function RecurringGiftsPage() {
 
       toast.success(`Recurring gift ${newStatus === "active" ? "resumed" : "paused"}`);
       refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update status");
     } finally {
       setProcessingId(null);
@@ -170,7 +169,7 @@ export default function RecurringGiftsPage() {
       toast.success("Recurring gift cancelled");
       setCancellingGiftId(null);
       refresh();
-    } catch (error) {
+    } catch {
       toast.error("Failed to cancel recurring gift");
     } finally {
       setProcessingId(null);
