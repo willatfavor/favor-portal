@@ -10,6 +10,21 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 
 ---
 
+## Current State (Updated February 16, 2026)
+
+- **Overall Health:** Lint, typecheck, production build, and Playwright smoke tests are currently passing.
+- **Frontend Modules:** `admin`, `content`, `lms`, and `giving` routes are implemented and included in smoke coverage.
+- **Backend APIs:** Key giving and LMS/admin auth-protected routes are validated for expected behaviors (success or `401` when unauthenticated).
+- **Dev Bypass Behavior:** Mock data paths are active when Supabase environment variables are not configured. Server-side mock storage is now stateful in-process for API smoke tests.
+
+### Latest Validation Snapshot
+- `npm run lint` -> pass (no warnings/errors)
+- `npm run typecheck` -> pass
+- `npm run build` -> pass
+- `npm run test:e2e` -> pass (`19` tests)
+
+---
+
 ## Tech Stack
 
 - **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
@@ -180,6 +195,11 @@ Detailed handoff notes for specific implementation areas:
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint checks
 - `npm run typecheck` - Run TypeScript compiler checks
+- `npm run test:e2e:install` - Install Playwright Chromium browser
+- `npm run test:e2e` - Run headless Playwright end-to-end smoke tests
+- `npm run test:e2e:headed` - Run Playwright tests in headed mode
+- `npm run test:e2e:ui` - Open Playwright UI mode
+- `npm run test:e2e:report` - Open Playwright HTML test report
 
 ---
 
@@ -187,6 +207,8 @@ Detailed handoff notes for specific implementation areas:
 
 - **Branching:** Use focused feature branches.
 - **PRs:** Follow the template in `.github/PULL_REQUEST_TEMPLATE.md`.
-- **CI:** All PRs must pass lint, typecheck, and build steps.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) runs:
+  - `quality` job: `npm ci`, lint, typecheck, build
+  - `e2e` job: Playwright browser install + smoke tests + artifact upload (`playwright-report`, `test-results`)
 
 See `docs/PR_COLLABORATION_NOTES.md` for full details.
