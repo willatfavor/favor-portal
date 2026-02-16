@@ -7,7 +7,7 @@ import { useGrants } from "@/hooks/use-grants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Download, Repeat, Calendar, ArrowRight, TrendingUp, Target } from "lucide-react";
+import { Heart, Download, Repeat, Calendar, ArrowRight, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
@@ -263,36 +263,6 @@ function GivingPageContent() {
                   <p className="text-xs text-[#666666]">{new Date().getFullYear() - 1} annual receipt</p>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" asChild>
-                <Link href="/giving/recurring" className="flex items-center gap-3">
-                  <Repeat className="h-4 w-4 text-[#2b4d24]" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium">Manage Recurring</p>
-                    <p className="text-xs text-[#666666]">Edit or pause gifts</p>
-                  </div>
-                  <ArrowRight className="ml-auto h-4 w-4 text-[#999999]" />
-                </Link>
-              </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" asChild>
-                <Link href="/giving/impact" className="flex items-center gap-3">
-                  <TrendingUp className="h-4 w-4 text-[#2b4d24]" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium">View Impact</p>
-                    <p className="text-xs text-[#666666]">See your impact</p>
-                  </div>
-                  <ArrowRight className="ml-auto h-4 w-4 text-[#999999]" />
-                </Link>
-              </Button>
-              <Button variant="outline" className="justify-start h-auto py-3" asChild>
-                <Link href="/giving/goals" className="flex items-center gap-3">
-                  <Target className="h-4 w-4 text-[#2b4d24]" />
-                  <div className="text-left">
-                    <p className="text-sm font-medium">Giving Goals</p>
-                    <p className="text-xs text-[#666666]">Set and track targets</p>
-                  </div>
-                  <ArrowRight className="ml-auto h-4 w-4 text-[#999999]" />
-                </Link>
-              </Button>
             </div>
           </section>
         </div>
@@ -354,37 +324,29 @@ function GivingPageContent() {
                   <p className="mt-2 text-sm text-[#666666]">No active recurring gifts</p>
                 </div>
               )}
-              <Button variant="outline" size="sm" className="w-full mt-4" asChild>
-                <Link href="/giving/recurring">Manage Recurring Gifts</Link>
-              </Button>
             </CardContent>
           </Card>
 
           {/* Impact */}
-          <Link href="/giving/impact" className="block">
-            <Card className="bg-gradient-to-br from-[#2b4d24] to-[#3d6633] text-white cursor-pointer hover:opacity-95 transition-opacity">
-              <CardContent className="space-y-4 p-5">
-                <p className="text-xs font-medium uppercase tracking-wider text-white/60">Your Impact</p>
-                <div className="text-center">
-                  <p className="text-3xl font-bold">1,247</p>
-                  <p className="text-sm text-white/70">Lives impacted this year</p>
+          <Card className="bg-gradient-to-br from-[#2b4d24] to-[#3d6633] text-white">
+            <CardContent className="space-y-4 p-5">
+              <p className="text-xs font-medium uppercase tracking-wider text-white/60">Your Impact</p>
+              <div className="text-center">
+                <p className="text-3xl font-bold">1,247</p>
+                <p className="text-sm text-white/70">Lives impacted this year</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-lg glass-hero p-3">
+                  <p className="text-lg font-semibold">12</p>
+                  <p className="text-[10px] text-white/60">Communities</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="rounded-lg glass-hero p-3">
-                    <p className="text-lg font-semibold">12</p>
-                    <p className="text-[10px] text-white/60">Communities</p>
-                  </div>
-                  <div className="rounded-lg glass-hero p-3">
-                    <p className="text-lg font-semibold">4</p>
-                    <p className="text-[10px] text-white/60">Countries</p>
-                  </div>
+                <div className="rounded-lg glass-hero p-3">
+                  <p className="text-lg font-semibold">4</p>
+                  <p className="text-[10px] text-white/60">Countries</p>
                 </div>
-                <div className="w-full mt-2 py-2 text-center text-sm bg-white/20 rounded-md">
-                  View Full Impact →
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
