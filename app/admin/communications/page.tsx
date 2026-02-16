@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunicationTemplate } from "@/types";
-import { getMockTemplates, setMockTemplates } from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +39,7 @@ import {
   AlertCircle,
   Check,
 } from "lucide-react";
+import { toast } from "sonner";
 
 type Channel = CommunicationTemplate["channel"];
 type TemplateStatus = CommunicationTemplate["status"];
@@ -108,29 +108,21 @@ export default function AdminCommunicationsPage() {
     { id: string; templateId: string; templateName: string; channel: Channel; sentAt: string }[]
   >([]);
 
-  useEffect(() => {
-    setTemplatesState(getMockTemplates());
+  const loadCommunications = useCallback(async () => {
     try {
-      const stored = localStorage.getItem("favor_comms_send_log");
-      if (stored) setSendLog(JSON.parse(stored));
+      const response = await fetch("/api/admin/communications", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      setTemplatesState(Array.isArray(payload.templates) ? payload.templates : []);
+      setSendLog(Array.isArray(payload.sendLog) ? payload.sendLog : []);
     } catch {
-      // ignore
+      toast.error("Unable to load communications");
     }
   }, []);
 
-  const persist = (next: CommunicationTemplate[]) => {
-    setTemplatesState(next);
-    setMockTemplates(next);
-  };
-
-  const persistSendLog = (
-    next: { id: string; templateId: string; templateName: string; channel: Channel; sentAt: string }[]
-  ) => {
-    setSendLog(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("favor_comms_send_log", JSON.stringify(next));
-    }
-  };
+  useEffect(() => {
+    loadCommunications();
+  }, [loadCommunications]);
 
   const filtered = useMemo(() => {
     return templates.filter((t) => {
@@ -156,74 +148,115 @@ export default function AdminCommunicationsPage() {
     return counts;
   }, [templates]);
 
-  function addTemplate() {
+  async function addTemplate() {
     if (!newTemplate.name) return;
-    const created: CommunicationTemplate = {
-      id: `template-${Date.now()}`,
-      channel: newTemplate.channel ?? "email",
-      name: newTemplate.name,
-      subject: newTemplate.channel === "email" ? newTemplate.subject : undefined,
-      content: newTemplate.content ?? "",
-      status: newTemplate.status ?? "draft",
-      updatedAt: new Date().toISOString(),
-    };
-    persist([created, ...templates]);
-    setNewTemplate(EMPTY_TEMPLATE);
-    setActiveTab("list");
+    try {
+      const response = await fetch("/api/admin/communications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel: newTemplate.channel ?? "email",
+          name: newTemplate.name,
+          subject: newTemplate.subject,
+          content: newTemplate.content ?? "",
+          status: newTemplate.status ?? "draft",
+        }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const created = payload.template as CommunicationTemplate;
+      setTemplatesState((prev) => [created, ...prev]);
+      setNewTemplate(EMPTY_TEMPLATE);
+      setActiveTab("list");
+      toast.success("Template created");
+    } catch {
+      toast.error("Unable to create template");
+    }
   }
 
-  function updateTemplate() {
+  async function updateTemplate() {
     if (!editingTemplate) return;
-    const next = templates.map((t) =>
-      t.id === editingTemplate.id
-        ? { ...editingTemplate, updatedAt: new Date().toISOString() }
-        : t
-    );
-    persist(next);
-    setEditingTemplate(null);
+    try {
+      const response = await fetch(`/api/admin/communications/${editingTemplate.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTemplate),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const updated = payload.template as CommunicationTemplate;
+      setTemplatesState((prev) => prev.map((template) => (template.id === updated.id ? updated : template)));
+      setEditingTemplate(null);
+      toast.success("Template updated");
+    } catch {
+      toast.error("Unable to update template");
+    }
   }
 
-  function deleteTemplate(id: string) {
-    persist(templates.filter((t) => t.id !== id));
-    setDeleteConfirmId(null);
+  async function deleteTemplate(id: string) {
+    try {
+      const response = await fetch(`/api/admin/communications/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed");
+      setTemplatesState((prev) => prev.filter((template) => template.id !== id));
+      setDeleteConfirmId(null);
+      toast.success("Template deleted");
+    } catch {
+      toast.error("Unable to delete template");
+    }
   }
 
   function duplicateTemplate(t: CommunicationTemplate) {
-    const dupe: CommunicationTemplate = {
+    setNewTemplate({
       ...t,
-      id: `template-${Date.now()}`,
+      id: undefined,
       name: `${t.name} (Copy)`,
       status: "draft",
-      updatedAt: new Date().toISOString(),
-    };
-    persist([dupe, ...templates]);
+    });
+    setActiveTab("create");
   }
 
-  function toggleStatus(id: string) {
-    const next = templates.map((t) =>
-      t.id === id
-        ? {
-            ...t,
-            status: (t.status === "active" ? "draft" : "active") as TemplateStatus,
-            updatedAt: new Date().toISOString(),
-          }
-        : t
-    );
-    persist(next);
+  async function toggleStatus(id: string) {
+    const template = templates.find((entry) => entry.id === id);
+    if (!template) return;
+    const status = (template.status === "active" ? "draft" : "active") as TemplateStatus;
+    try {
+      const response = await fetch(`/api/admin/communications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const updated = payload.template as CommunicationTemplate;
+      setTemplatesState((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
+    } catch {
+      toast.error("Unable to update template status");
+    }
   }
 
-  const handleTestSend = useCallback((t: CommunicationTemplate) => {
-    const entry = {
-      id: `send-${crypto.randomUUID()}`,
-      templateId: t.id,
-      templateName: t.name,
-      channel: t.channel,
-      sentAt: new Date().toISOString(),
-    };
-    persistSendLog([entry, ...sendLog]);
-    setTestSentId(t.id);
-    setTimeout(() => setTestSentId(null), 2000);
-  }, [sendLog]);
+  const handleTestSend = useCallback(async (template: CommunicationTemplate) => {
+    try {
+      const response = await fetch("/api/admin/communications", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const entry = {
+        id: `send-${crypto.randomUUID()}`,
+        templateId: template.id,
+        templateName: template.name,
+        channel: template.channel,
+        sentAt: new Date().toISOString(),
+      };
+      setSendLog((prev) => [entry, ...prev]);
+      setTestSentId(template.id);
+      setTimeout(() => setTestSentId(null), 2000);
+      toast.success("Test send logged");
+    } catch {
+      toast.error("Unable to send test message");
+    }
+  }, []);
 
   function renderPreview(t: CommunicationTemplate) {
     const sampleData: Record<string, string> = {

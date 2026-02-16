@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { recordActivity } from "@/lib/mock-store";
 import type { User as UserType } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,13 +47,14 @@ export default function ProfilePage() {
         if (form.phone && form.phone !== user.phone) updates.phone = form.phone;
         if (Object.keys(updates).length > 0) {
           updateDevUser(updates);
-          recordActivity({
-            id: `activity-${Date.now()}`,
-            type: "profile_updated",
-            userId: user.id,
-            createdAt: new Date().toISOString(),
-            metadata: { fields: Object.keys(updates).join(",") },
-          });
+          fetch("/api/activity", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "profile_updated",
+              metadata: { fields: Object.keys(updates).join(",") },
+            }),
+          }).catch(() => undefined);
         }
       }
       setSaving(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,14 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getMockUsers,
-  getMockCourses,
-  getMockContent,
-  getMockGifts,
-  getMockActivity,
-} from "@/lib/mock-store";
-import { getSupportTickets } from "@/lib/local-storage";
 import { formatCurrency } from "@/lib/utils";
 import { ActivityEvent, Gift, SupportTicket, User } from "@/types";
 import {
@@ -33,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { GIVING_TIERS } from "@/lib/constants";
+import { toast } from "sonner";
 
 const USER_TYPES = [
   "all",
@@ -91,36 +84,31 @@ export default function AdminOverviewPage() {
   const [userTypeFilter, setUserTypeFilter] = useState("all");
   const [coursesCount, setCoursesCount] = useState(0);
   const [contentCount, setContentCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setUsers(getMockUsers());
-    setSwitchUsers(getMockUsers());
-    setActivity(getMockActivity());
-    setTickets(getSupportTickets());
-    setGifts(getMockGifts());
-    setCoursesCount(getMockCourses().length);
-    setContentCount(getMockContent().length);
+  const loadOverview = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/admin/overview", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      setUsers(Array.isArray(payload.users) ? payload.users : []);
+      setSwitchUsers(Array.isArray(payload.users) ? payload.users : []);
+      setActivity(Array.isArray(payload.activity) ? payload.activity : []);
+      setTickets(Array.isArray(payload.tickets) ? payload.tickets : []);
+      setGifts(Array.isArray(payload.gifts) ? payload.gifts : []);
+      setCoursesCount(Number(payload.coursesCount ?? 0));
+      setContentCount(Number(payload.contentCount ?? 0));
+    } catch {
+      toast.error("Unable to load admin overview");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    function handleActivity() {
-      setActivity(getMockActivity());
-    }
-    function handleGifts() {
-      setGifts(getMockGifts());
-    }
-    function handleSupport() {
-      setTickets(getSupportTickets());
-    }
-    window.addEventListener("favor:activity", handleActivity);
-    window.addEventListener("favor:gifts", handleGifts);
-    window.addEventListener("favor:support", handleSupport);
-    return () => {
-      window.removeEventListener("favor:activity", handleActivity);
-      window.removeEventListener("favor:gifts", handleGifts);
-      window.removeEventListener("favor:support", handleSupport);
-    };
-  }, []);
+    loadOverview();
+  }, [loadOverview]);
 
   const monthOptions = useMemo(() => {
     const dates = [
@@ -231,6 +219,7 @@ export default function AdminOverviewPage() {
         <span className="text-xs text-[#999999]">
           Showing {filteredUsers.length} partners
         </span>
+        {isLoading && <span className="text-xs text-[#999999]">Refreshing...</span>}
       </div>
 
       {isDev && activeUser && (
@@ -255,8 +244,7 @@ export default function AdminOverviewPage() {
                   value={activeUser.id}
                   onValueChange={(value) => {
                     setDevUser?.(value);
-                    setSwitchUsers(getMockUsers());
-                    setUsers(getMockUsers());
+                    loadOverview();
                   }}
                 >
                   <SelectTrigger>
@@ -277,7 +265,7 @@ export default function AdminOverviewPage() {
                   value={activeUser.constituentType}
                   onValueChange={(value) => {
                     updateDevUser?.({ constituentType: value as User["constituentType"] });
-                    setUsers(getMockUsers());
+                    loadOverview();
                   }}
                 >
                   <SelectTrigger>
@@ -299,7 +287,7 @@ export default function AdminOverviewPage() {
                   onValueChange={(value) => {
                     const match = TIER_PRESETS.find((t) => t.label === value);
                     updateDevUser?.({ lifetimeGivingTotal: match?.value ?? 0 });
-                    setUsers(getMockUsers());
+                    loadOverview();
                   }}
                 >
                   <SelectTrigger>

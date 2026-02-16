@@ -25,8 +25,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/portal/empty-state";
 import { SectionHeader } from "@/components/portal/section-header";
 import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
-import { recordActivity } from "@/lib/mock-store";
-import { isDevBypass } from "@/lib/dev-mode";
 import { ContentItem } from "@/types";
 import { useState } from "react";
 
@@ -115,15 +113,14 @@ export default function ContentDetailPage() {
   useEffect(() => {
     if (!item || !user?.id) return;
     addToRecentlyViewed(item.id);
-    if (isDevBypass) {
-      recordActivity({
-        id: `activity-${Date.now()}`,
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         type: "content_viewed",
-        userId: user.id,
-        createdAt: new Date().toISOString(),
         metadata: { contentId: item.id, type: item.type },
-      });
-    }
+      }),
+    }).catch(() => undefined);
   }, [item, user?.id]);
 
   // Bookmark state

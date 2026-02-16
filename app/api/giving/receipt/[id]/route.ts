@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isDevBypass } from '@/lib/dev-mode';
 import { getMockGifts, getMockUserById } from '@/lib/mock-store';
 import type { ConstituentType, Gift, User } from '@/types';
+import { logError } from '@/lib/logger';
 
 type ReceiptGift = Pick<
   Gift,
@@ -140,7 +141,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Receipt GET error:', error);
+    logError({ event: 'giving.receipt.fetch_failed', route: '/api/giving/receipt/[id]', error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Heart, CheckCircle, Download, ArrowLeft, ArrowRight } from "lucide-react";
-import { addMockGift, recordActivity } from "@/lib/mock-store";
 import { GIVING_DESIGNATIONS } from "@/lib/portal-mock-data";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -68,34 +67,37 @@ export function GiveNowDialog({ trigger, onGiftComplete }: GiveNowDialogProps) {
   function handleConfirm() {
     if (effectiveAmount <= 0) return;
     setProcessing(true);
-    setTimeout(() => {
-      const giftId = `portal-gift-${Date.now()}`;
-      const gift = {
-        id: giftId,
-        userId: user?.id ?? "dev-user",
+    fetch("/api/giving/one-time", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         amount: effectiveAmount,
-        date: new Date().toISOString(),
         designation,
-        isRecurring: frequency !== "one-time",
-        receiptSent: true,
-        source: "portal" as const,
-      };
-      addMockGift(gift);
-      recordActivity({
-        id: `activity-${Date.now()}`,
-        type: "gift_created",
-        userId: gift.userId,
-        createdAt: new Date().toISOString(),
-        metadata: { amount: effectiveAmount, designation },
+        frequency,
+        note,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to process gift");
+        }
+        return response.json();
+      })
+      .then((payload) => {
+        const createdGiftId = payload?.gift?.id ? String(payload.gift.id) : `gift-${Date.now()}`;
+        setGiftId(createdGiftId);
+        setStep("receipt");
+        onGiftComplete?.();
+        toast.success("Gift received!", {
+          description: `$${effectiveAmount.toLocaleString()} to ${designation}`,
+        });
+      })
+      .catch(() => {
+        toast.error("Unable to process your gift right now");
+      })
+      .finally(() => {
+        setProcessing(false);
       });
-      setGiftId(giftId);
-      setProcessing(false);
-      setStep("receipt");
-      onGiftComplete?.();
-      toast.success("Gift received!", {
-        description: `$${effectiveAmount.toLocaleString()} to ${designation}`,
-      });
-    }, 1200);
   }
 
   function downloadReceipt() {

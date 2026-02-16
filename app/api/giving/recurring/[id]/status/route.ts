@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isDevBypass } from '@/lib/dev-mode';
 import { getMockRecurringGifts, setMockRecurringGifts } from '@/lib/mock-store';
 import type { RecurringGift } from '@/types';
+import { logError, logInfo } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -54,9 +55,20 @@ export async function PATCH(
       return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
     }
 
+    logInfo({
+      event: 'giving.recurring.status_changed',
+      route: '/api/giving/recurring/[id]/status',
+      userId: session.user.id,
+      details: { recurringGiftId: id, status },
+    });
+
     return NextResponse.json({ success: true, gift }, { status: 200 });
   } catch (error) {
-    console.error('Recurring gift status PATCH error:', error);
+    logError({
+      event: 'giving.recurring.status_change_failed',
+      route: '/api/giving/recurring/[id]/status',
+      error,
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

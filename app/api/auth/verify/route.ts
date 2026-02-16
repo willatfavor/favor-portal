@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { logError, logInfo } from '@/lib/logger';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (isDevBypass) {
+      logInfo({ event: 'auth.verify.dev_bypass', route: '/api/auth/verify' });
       return NextResponse.json(
         {
           success: true,
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Token verification error:', error);
+      logError({ event: 'auth.verify.invalid_token', route: '/api/auth/verify', error });
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -76,12 +78,18 @@ export async function POST(request: NextRequest) {
         .eq('id', data.user.id);
     }
 
+    logInfo({
+      event: 'auth.verify.success',
+      route: '/api/auth/verify',
+      userId: data.user?.id,
+    });
+
     return NextResponse.json(
       { success: true, user: data.user },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Verify route error:', error);
+    logError({ event: 'auth.verify.route_failed', route: '/api/auth/verify', error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

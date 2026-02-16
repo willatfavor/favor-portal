@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
+import { logError, logInfo } from '@/lib/logger';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (isDevBypass) {
+      logInfo({ event: 'auth.magic_link.dev_bypass', route: '/api/auth/magic-link' });
       return NextResponse.json(
         {
           success: true,
@@ -68,7 +70,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Supabase magic link error:', error);
+      logError({
+        event: 'auth.magic_link.supabase_failed',
+        route: '/api/auth/magic-link',
+        details: { email: email.toLowerCase() },
+        error,
+      });
       return NextResponse.json(
         { error: 'Failed to generate magic link' },
         { status: 500 }
@@ -79,12 +86,18 @@ export async function POST(request: NextRequest) {
     // Optionally, we can send a custom email here if needed
     // For now, we'll rely on Supabase's built-in email
 
+    logInfo({
+      event: 'auth.magic_link.sent',
+      route: '/api/auth/magic-link',
+      details: { email: email.toLowerCase() },
+    });
+
     return NextResponse.json(
       { success: true, message: 'Magic link sent successfully' },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Magic link route error:', error);
+    logError({ event: 'auth.magic_link.route_failed', route: '/api/auth/magic-link', error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

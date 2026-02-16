@@ -299,11 +299,15 @@ export interface SupportMessage {
 
 export interface SupportTicket {
   id: string;
+  requesterUserId?: string;
   category: string;
   subject: string;
   message: string;
   status: 'open' | 'in_progress' | 'resolved';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
   createdAt: string;
+  updatedAt?: string;
+  resolvedAt?: string;
   requesterName?: string;
   requesterEmail?: string;
   messages?: SupportMessage[];
@@ -365,6 +369,7 @@ export interface ContentItem {
   date: string;
   author: string;
   tags: string[];
+  status?: 'published' | 'draft';
   coverImage?: string;
   fileUrl?: string;
 }

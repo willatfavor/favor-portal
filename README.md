@@ -12,21 +12,38 @@ The **Favor International Partner Portal** is a multi-constituent experience des
 
 ## Current State (Updated February 16, 2026)
 
-- **Overall Health:** Lint, typecheck, production build, and Playwright smoke tests are currently passing.
-- **Frontend Modules:** `admin`, `content`, `lms`, and `giving` routes are implemented and included in smoke coverage.
-- **Backend APIs:** Key giving and LMS/admin auth-protected routes are validated for expected behaviors (success or `401` when unauthenticated).
+- **Overall Health:** Lint, typecheck, production build, and Playwright end-to-end suites are passing.
+- **Frontend Modules:** `admin`, `content`, `lms`, and `giving` routes are implemented and now read/write through API endpoints (not browser-local storage).
+- **Backend APIs:** Added/expanded routes for:
+  - `/api/content`
+  - `/api/support`
+  - `/api/activity`
+  - `/api/giving/one-time`
+  - `/api/admin/users` + `/api/admin/users/[id]`
+  - `/api/admin/content` + `/api/admin/content/[id]`
+  - `/api/admin/communications` + `/api/admin/communications/[id]`
+  - `/api/admin/support`
+  - `/api/admin/gifts`
+  - `/api/admin/overview`
 - **Dev Bypass Behavior:** Mock data paths are active when Supabase environment variables are not configured. Server-side mock storage is now stateful in-process for API smoke tests.
 - **Auth Hardening:** Magic link and verification endpoints include request rate limiting with `429` + `Retry-After`.
+- **Observability:** Structured logging helper (`lib/logger.ts`) is now used in critical auth and giving routes plus new admin/content/support APIs.
 - **Accessibility Baseline:** Skip-to-content link, global `:focus-visible` styles, and notification `aria-live` updates are in place.
 - **Loading UX:** Shared skeleton loaders now replace plain "Loading..." placeholders across portal pages.
 - **Image Optimization:** `next/image` now uses configured remote host allowlist (`images.unsplash.com`, `storage.googleapis.com`, Cloudflare Stream domains) without `unoptimized` flags.
 - **Dashboard Maintainability:** Role-specific dashboard logic is extracted into `lib/dashboard/role-experience.ts`.
+- **Data Plane Migration:** New SQL migration `005_portal_admin_data_plane.sql` adds persisted tables/policies for:
+  - dynamic portal content (`portal_content`)
+  - support tickets/messages (`support_tickets`, `support_messages`)
+  - communication templates/send logs (`communication_templates`, `communication_send_logs`)
+  - portal activity events (`portal_activity_events`)
+  - richer giving metadata on `giving_cache` (`source`, `note`, `created_at`)
 
 ### Latest Validation Snapshot
 - `npm run lint` -> pass (no warnings/errors)
 - `npm run typecheck` -> pass
 - `npm run build` -> pass
-- `npm run test:e2e` -> pass (`19` tests)
+- `npm run test:e2e` -> pass (`24` tests)
 
 ### Theming Note
 - Dark mode is not yet enabled. Current implementation targets the Favor brand's light visual system; dark mode is planned as a future enhancement.
@@ -134,6 +151,8 @@ Before deployment or for local development with Supabase, apply the migrations i
 1. `database/migrations/001_initial_schema.sql` - Core tables (users, giving_cache, etc.)
 2. `database/migrations/002_lms_production_upgrade.sql` - LMS extensions and RLS policies.
 3. `database/migrations/003_lms_advanced_features.sql` - LMS RBAC, analytics, versioning, and certificate verification.
+4. `database/migrations/004_lms_community_and_cohorts.sql` - Cohorts and discussion threads/replies.
+5. `database/migrations/005_portal_admin_data_plane.sql` - Dynamic content, support/comms persistence, portal activity events, and giving metadata.
 
 ---
 

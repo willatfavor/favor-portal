@@ -11,6 +11,7 @@ import type {
   ContentItem,
   PortalEvent,
   CommunicationTemplate,
+  SupportTicket,
   ActivityEvent,
   UserRoleAssignment,
   UserQuizAttempt,
@@ -58,6 +59,8 @@ const STORAGE_KEYS = {
   content: 'favor_mock_content',
   events: 'favor_mock_events',
   templates: 'favor_mock_templates',
+  commsSendLogs: 'favor_mock_comms_send_logs',
+  supportTickets: 'favor_mock_support_tickets',
   activity: 'favor_mock_activity',
   roles: 'favor_mock_roles',
   cohorts: 'favor_mock_course_cohorts',
@@ -124,6 +127,8 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.content, MOCK_CONTENT);
   seed(STORAGE_KEYS.events, MOCK_EVENTS);
   seed(STORAGE_KEYS.templates, MOCK_TEMPLATES);
+  seed(STORAGE_KEYS.commsSendLogs, []);
+  seed(STORAGE_KEYS.supportTickets, []);
   seed(STORAGE_KEYS.activity, MOCK_ACTIVITY);
   seed(STORAGE_KEYS.roles, MOCK_USER_ROLES);
   seed(STORAGE_KEYS.cohorts, MOCK_COHORTS);
@@ -557,6 +562,57 @@ export function getMockTemplates(): CommunicationTemplate[] {
 
 export function setMockTemplates(templates: CommunicationTemplate[]): void {
   setItem(STORAGE_KEYS.templates, templates);
+}
+
+export interface CommunicationSendLogEntry {
+  id: string;
+  templateId: string;
+  templateName: string;
+  channel: CommunicationTemplate['channel'];
+  sentAt: string;
+}
+
+export function getMockCommunicationSendLogs(): CommunicationSendLogEntry[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.commsSendLogs, []);
+}
+
+export function setMockCommunicationSendLogs(entries: CommunicationSendLogEntry[]): void {
+  setItem(STORAGE_KEYS.commsSendLogs, entries);
+}
+
+export function addMockCommunicationSendLog(entry: CommunicationSendLogEntry): void {
+  const entries = getMockCommunicationSendLogs();
+  setMockCommunicationSendLogs([entry, ...entries]);
+}
+
+export function getMockSupportTickets(): SupportTicket[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.supportTickets, []);
+}
+
+export function setMockSupportTickets(tickets: SupportTicket[]): void {
+  setItem(STORAGE_KEYS.supportTickets, tickets);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('favor:support'));
+  }
+}
+
+export function addMockSupportTicket(ticket: SupportTicket): void {
+  const tickets = getMockSupportTickets();
+  setMockSupportTickets([ticket, ...tickets]);
+}
+
+export function updateMockSupportTicket(
+  ticketId: string,
+  updates: Partial<SupportTicket>
+): SupportTicket | null {
+  const tickets = getMockSupportTickets();
+  const next = tickets.map((ticket) =>
+    ticket.id === ticketId ? { ...ticket, ...updates } : ticket
+  );
+  setMockSupportTickets(next);
+  return next.find((ticket) => ticket.id === ticketId) ?? null;
 }
 
 export function getMockActivity(): ActivityEvent[] {

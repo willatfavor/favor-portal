@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isDevBypass } from '@/lib/dev-mode';
 import { getMockRecurringGifts, setMockRecurringGifts } from '@/lib/mock-store';
+import { logError, logInfo } from '@/lib/logger';
 
 export async function PATCH(
   request: NextRequest,
@@ -55,9 +56,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Gift not found' }, { status: 404 });
     }
 
+    logInfo({
+      event: 'giving.recurring.updated',
+      route: '/api/giving/recurring/[id]',
+      userId: session.user.id,
+      details: { recurringGiftId: id },
+    });
+
     return NextResponse.json({ success: true, gift }, { status: 200 });
   } catch (error) {
-    console.error('Recurring gift PATCH error:', error);
+    logError({ event: 'giving.recurring.update_failed', route: '/api/giving/recurring/[id]', error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -96,9 +104,16 @@ export async function DELETE(
 
     if (error) throw error;
 
+    logInfo({
+      event: 'giving.recurring.deleted',
+      route: '/api/giving/recurring/[id]',
+      userId: session.user.id,
+      details: { recurringGiftId: id },
+    });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('Recurring gift DELETE error:', error);
+    logError({ event: 'giving.recurring.delete_failed', route: '/api/giving/recurring/[id]', error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

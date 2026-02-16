@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ContentItem } from "@/types";
-import { getMockContent, setMockContent } from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +37,7 @@ import {
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const TYPES: ContentItem["type"][] = ["report", "update", "resource", "prayer", "story"];
 const ACCESS: ContentItem["accessLevel"][] = [
@@ -98,20 +98,26 @@ export default function AdminContentPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("list");
 
-  useEffect(() => {
-    const raw = getMockContent();
-    setItems(
-      raw.map((item) => ({
-        ...item,
-        status: (item as ContentItemWithStatus).status ?? "published",
-      }))
-    );
+  const loadContent = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/content", { cache: "no-store" });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const nextItems = Array.isArray(payload.items) ? payload.items : [];
+      setItems(
+        nextItems.map((item: ContentItemWithStatus) => ({
+          ...item,
+          status: item.status ?? "published",
+        }))
+      );
+    } catch {
+      toast.error("Unable to load content");
+    }
   }, []);
 
-  const persist = (next: ContentItemWithStatus[]) => {
-    setItems(next);
-    setMockContent(next);
-  };
+  useEffect(() => {
+    loadContent();
+  }, [loadContent]);
 
   const filtered = useMemo(() => {
     return items.filter((item) => {
@@ -139,65 +145,98 @@ export default function AdminContentPage() {
     return counts;
   }, [items]);
 
-  function addContent() {
+  async function addContent() {
     if (!newItem.title || !newItem.excerpt) return;
-    const created: ContentItemWithStatus = {
-      id: `content-${Date.now()}`,
-      title: newItem.title,
-      excerpt: newItem.excerpt,
-      body: newItem.body || newItem.excerpt,
-      type: newItem.type ?? "update",
-      accessLevel: newItem.accessLevel ?? "partner",
-      date: new Date().toISOString().slice(0, 10),
-      author: newItem.author || "Favor International",
-      tags: newItem.tags || [],
-      coverImage: newItem.coverImage,
-      fileUrl: newItem.fileUrl,
-      status: newItem.status ?? "draft",
-    };
-    persist([created, ...items]);
-    setNewItem(EMPTY_ITEM);
-    setActiveTab("list");
+    try {
+      const response = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newItem.title,
+          excerpt: newItem.excerpt,
+          body: newItem.body || newItem.excerpt,
+          type: newItem.type ?? "update",
+          accessLevel: newItem.accessLevel ?? "partner",
+          author: newItem.author || "Favor International",
+          tags: newItem.tags || [],
+          coverImage: newItem.coverImage,
+          fileUrl: newItem.fileUrl,
+          status: newItem.status ?? "draft",
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed");
+
+      const payload = await response.json();
+      const created = payload.item as ContentItemWithStatus;
+      setItems((prev) => [created, ...prev]);
+      setNewItem(EMPTY_ITEM);
+      setActiveTab("list");
+      toast.success("Content created");
+    } catch {
+      toast.error("Unable to create content");
+    }
   }
 
-  function updateContent() {
+  async function updateContent() {
     if (!editingItem) return;
-    const next = items.map((item) =>
-      item.id === editingItem.id ? editingItem : item
-    );
-    persist(next);
-    setEditingItem(null);
+    try {
+      const response = await fetch(`/api/admin/content/${editingItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingItem),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const updated = payload.item as ContentItemWithStatus;
+      setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setEditingItem(null);
+      toast.success("Content updated");
+    } catch {
+      toast.error("Unable to update content");
+    }
   }
 
-  function deleteContent(id: string) {
-    persist(items.filter((item) => item.id !== id));
-    setDeleteConfirmId(null);
+  async function deleteContent(id: string) {
+    try {
+      const response = await fetch(`/api/admin/content/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed");
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      setDeleteConfirmId(null);
+      toast.success("Content deleted");
+    } catch {
+      toast.error("Unable to delete content");
+    }
   }
 
   function duplicateContent(item: ContentItemWithStatus) {
-    const dupe: ContentItemWithStatus = {
+    setNewItem({
       ...item,
-      id: `content-${Date.now()}`,
+      id: undefined,
       title: `${item.title} (Copy)`,
       status: "draft",
-      date: new Date().toISOString().slice(0, 10),
-    };
-    persist([dupe, ...items]);
+    });
+    setActiveTab("create");
   }
 
-  function togglePublish(id: string) {
-    const next = items.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            status:
-              (item.status ?? "published") === "published"
-                ? ("draft" as ContentStatus)
-                : ("published" as ContentStatus),
-          }
-        : item
-    );
-    persist(next);
+  async function togglePublish(id: string) {
+    const target = items.find((item) => item.id === id);
+    if (!target) return;
+    const status = (target.status ?? "published") === "published" ? "draft" : "published";
+
+    try {
+      const response = await fetch(`/api/admin/content/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) throw new Error("Failed");
+      const payload = await response.json();
+      const updated = payload.item as ContentItemWithStatus;
+      setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch {
+      toast.error("Unable to update publish status");
+    }
   }
 
   return (

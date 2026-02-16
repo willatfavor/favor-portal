@@ -7,6 +7,7 @@ import {
   getMockRecurringGiftsForUser 
 } from '@/lib/mock-store';
 import { RecurringGift } from '@/types';
+import { logError, logInfo } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, gifts: gifts || [] }, { status: 200 });
   } catch (error) {
-    console.error('Recurring gifts GET error:', error);
+    logError({ event: 'giving.recurring.fetch_failed', route: '/api/giving/recurring', error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -112,9 +113,16 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
+    logInfo({
+      event: 'giving.recurring.created',
+      route: '/api/giving/recurring',
+      userId: session.user.id,
+      details: { frequency, amount },
+    });
+
     return NextResponse.json({ success: true, gift }, { status: 201 });
   } catch (error) {
-    console.error('Recurring gifts POST error:', error);
+    logError({ event: 'giving.recurring.create_failed', route: '/api/giving/recurring', error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
