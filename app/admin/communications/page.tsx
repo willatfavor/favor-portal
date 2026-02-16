@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunicationTemplate } from "@/types";
 import { getMockTemplates, setMockTemplates } from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
@@ -212,9 +212,9 @@ export default function AdminCommunicationsPage() {
     persist(next);
   }
 
-  function handleTestSend(t: CommunicationTemplate) {
+  const handleTestSend = useCallback((t: CommunicationTemplate) => {
     const entry = {
-      id: `send-${Date.now()}`,
+      id: `send-${crypto.randomUUID()}`,
       templateId: t.id,
       templateName: t.name,
       channel: t.channel,
@@ -223,7 +223,7 @@ export default function AdminCommunicationsPage() {
     persistSendLog([entry, ...sendLog]);
     setTestSentId(t.id);
     setTimeout(() => setTestSentId(null), 2000);
-  }
+  }, [sendLog]);
 
   function renderPreview(t: CommunicationTemplate) {
     const sampleData: Record<string, string> = {
