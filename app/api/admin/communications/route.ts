@@ -10,10 +10,19 @@ import {
 import { hasAdminPermission } from "@/lib/api/admin-guard";
 import { mapTemplateRow } from "@/lib/api/mappers";
 import { logError, logInfo } from "@/lib/logger";
+import { sendEmail } from "@/lib/resend/client";
+import { sendSMS } from "@/lib/twilio/client";
 import type { CommunicationTemplate } from "@/types";
+import type { Json } from "@/types/supabase";
 
 const VALID_CHANNELS: CommunicationTemplate["channel"][] = ["email", "sms", "direct_mail"];
 const VALID_STATUS: CommunicationTemplate["status"][] = ["active", "draft"];
+
+function renderTemplate(content: string, variables: Record<string, string>): string {
+  return Object.entries(variables).reduce((result, [key, value]) => {
+    return result.replaceAll(`{{${key}}}`, value);
+  }, content);
+}
 
 export async function GET() {
   try {
@@ -182,33 +191,102 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { data: templateRow, error: templateError } = await supabase
-      .from("communication_templates")
-      .select("id,name,channel")
-      .eq("id", templateId)
-      .single();
+    const [{ data: templateRow, error: templateError }, { data: senderRow, error: senderError }] = await Promise.all([
+      supabase
+        .from("communication_templates")
+        .select("id,name,channel,subject,content")
+        .eq("id", templateId)
+        .single(),
+      supabase
+        .from("users")
+        .select("first_name,last_name,email,phone,constituent_type")
+        .eq("id", session.user.id)
+        .single(),
+    ]);
 
     if (templateError || !templateRow) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    }
+    if (senderError || !senderRow) {
+      return NextResponse.json({ error: "Sender profile not found" }, { status: 404 });
+    }
+
+    const variables = {
+      firstName: senderRow.first_name,
+      lastName: senderRow.last_name,
+      email: senderRow.email,
+      amount: "$100.00",
+      date: new Date().toLocaleDateString(),
+      designation: "Where Most Needed",
+      constituentType: senderRow.constituent_type,
+    };
+
+    const content = renderTemplate(templateRow.content, variables);
+    const subject = templateRow.subject
+      ? renderTemplate(templateRow.subject, variables)
+      : templateRow.name;
+    const requestedRecipient =
+      typeof body?.recipient === "string" && body.recipient.trim().length > 0
+        ? body.recipient.trim()
+        : null;
+    let recipient = requestedRecipient;
+    let status: "sent" | "queued" | "failed" = "sent";
+    let metadata: Record<string, string | number | boolean | null> = { mode: "test" };
+
+    try {
+      if (templateRow.channel === "email") {
+        recipient = recipient || senderRow.email;
+        if (!recipient) {
+          return NextResponse.json({ error: "Recipient email is required" }, { status: 400 });
+        }
+        const result = await sendEmail({
+          to: recipient,
+          subject,
+          text: content,
+        });
+        metadata = { ...metadata, provider: "resend", providerMessageId: result.id };
+      } else if (templateRow.channel === "sms") {
+        recipient = recipient || senderRow.phone || null;
+        if (!recipient) {
+          return NextResponse.json({ error: "Recipient phone is required" }, { status: 400 });
+        }
+        const result = await sendSMS(recipient, content);
+        metadata = { ...metadata, provider: "twilio", providerMessageId: result.sid };
+      } else {
+        status = "queued";
+        metadata = { ...metadata, dispatch: "manual_direct_mail" };
+      }
+    } catch (dispatchError) {
+      status = "failed";
+      metadata = {
+        ...metadata,
+        error: dispatchError instanceof Error ? dispatchError.message : String(dispatchError),
+      };
     }
 
     const { error } = await supabase.from("communication_send_logs").insert({
       template_id: templateRow.id,
       template_name: templateRow.name,
       channel: templateRow.channel,
-      recipient: body?.recipient ? String(body.recipient) : null,
+      recipient,
       sent_by: session.user.id,
-      status: "sent",
-      metadata: { mode: "test" },
+      status,
+      metadata: metadata as Json,
     });
 
     if (error) throw error;
+    if (status === "failed") {
+      return NextResponse.json(
+        { error: "Dispatch failed. Check communication send logs for details." },
+        { status: 502 }
+      );
+    }
 
     logInfo({
       event: "admin.communications.test_send",
       route: "/api/admin/communications",
       userId: session.user.id,
-      details: { templateId },
+      details: { templateId, status, channel: templateRow.channel },
     });
 
     return NextResponse.json({ success: true });

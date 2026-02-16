@@ -20,6 +20,8 @@ import type {
   CourseCohortMember,
   CourseDiscussionThread,
   CourseDiscussionReply,
+  UserProfileDetails,
+  GivingGoal,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -42,6 +44,8 @@ import {
   MOCK_COHORT_MEMBERS,
   MOCK_DISCUSSION_THREADS,
   MOCK_DISCUSSION_REPLIES,
+  MOCK_PROFILE_DETAILS,
+  MOCK_GIVING_GOALS,
 } from './mock-data';
 
 const STORAGE_KEYS = {
@@ -67,6 +71,8 @@ const STORAGE_KEYS = {
   cohortMembers: 'favor_mock_course_cohort_members',
   discussionThreads: 'favor_mock_discussion_threads',
   discussionReplies: 'favor_mock_discussion_replies',
+  profileDetails: 'favor_mock_profile_details',
+  givingGoals: 'favor_mock_giving_goals',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -135,6 +141,8 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.cohortMembers, MOCK_COHORT_MEMBERS);
   seed(STORAGE_KEYS.discussionThreads, MOCK_DISCUSSION_THREADS);
   seed(STORAGE_KEYS.discussionReplies, MOCK_DISCUSSION_REPLIES);
+  seed(STORAGE_KEYS.profileDetails, MOCK_PROFILE_DETAILS);
+  seed(STORAGE_KEYS.givingGoals, MOCK_GIVING_GOALS);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -535,6 +543,70 @@ export function updateMockPreferences(userId: string, updates: Partial<Communica
   );
   setMockPreferences(next);
   return next.find((p) => p.userId === userId) ?? null;
+}
+
+export function getMockProfileDetails(): UserProfileDetails[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.profileDetails, MOCK_PROFILE_DETAILS);
+}
+
+export function getMockProfileDetailsForUser(userId: string | undefined): UserProfileDetails | null {
+  if (!userId) return null;
+  return getMockProfileDetails().find((entry) => entry.userId === userId) ?? null;
+}
+
+export function upsertMockProfileDetails(
+  userId: string,
+  updates: Partial<Omit<UserProfileDetails, 'userId'>>
+): UserProfileDetails {
+  const details = getMockProfileDetails();
+  const existing = details.find((entry) => entry.userId === userId);
+  const nextEntry: UserProfileDetails = {
+    userId,
+    street: updates.street ?? existing?.street,
+    city: updates.city ?? existing?.city,
+    state: updates.state ?? existing?.state,
+    zip: updates.zip ?? existing?.zip,
+  };
+
+  const next = existing
+    ? details.map((entry) => (entry.userId === userId ? nextEntry : entry))
+    : [nextEntry, ...details];
+
+  setItem(STORAGE_KEYS.profileDetails, next);
+  return nextEntry;
+}
+
+export function getMockGivingGoals(): GivingGoal[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.givingGoals, MOCK_GIVING_GOALS);
+}
+
+export function getMockGivingGoalsForUser(userId: string | undefined): GivingGoal[] {
+  if (!userId) return [];
+  return getMockGivingGoals().filter((goal) => goal.userId === userId);
+}
+
+export function addMockGivingGoal(goal: GivingGoal): void {
+  const goals = getMockGivingGoals();
+  setItem(STORAGE_KEYS.givingGoals, [goal, ...goals]);
+}
+
+export function updateMockGivingGoal(goalId: string, updates: Partial<GivingGoal>): GivingGoal | null {
+  const goals = getMockGivingGoals();
+  const next = goals.map((goal) =>
+    goal.id === goalId ? { ...goal, ...updates, updatedAt: new Date().toISOString() } : goal
+  );
+  setItem(STORAGE_KEYS.givingGoals, next);
+  return next.find((goal) => goal.id === goalId) ?? null;
+}
+
+export function deleteMockGivingGoal(goalId: string): boolean {
+  const goals = getMockGivingGoals();
+  const next = goals.filter((goal) => goal.id !== goalId);
+  if (next.length === goals.length) return false;
+  setItem(STORAGE_KEYS.givingGoals, next);
+  return true;
 }
 
 export function getMockContent(): ContentItem[] {

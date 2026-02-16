@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logError, logInfo } from '@/lib/logger';
 import { hasAdminPermission, resolveAdminPermissions } from '@/lib/admin/roles';
+import { blackbaudClient } from '@/lib/blackbaud/client';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -65,27 +66,59 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Check if user exists
-    const { data: userData } = await supabase
+    // Check if user exists in the portal user table.
+    const { data: userData, error: userLookupError } = await supabase
       .from('users')
       .select('id, email, is_admin')
       .eq('email', email.toLowerCase())
-      .single();
+      .maybeSingle();
 
-    if (!userData) {
+    if (userLookupError && userLookupError.code !== 'PGRST116') {
+      throw userLookupError;
+    }
+
+    let canProvisionFromSky = false;
+    if (!userData && scope === 'portal') {
+      try {
+        const constituent = await blackbaudClient.getConstituentByEmail(email.toLowerCase());
+        canProvisionFromSky = Boolean(constituent);
+      } catch (skyError) {
+        logError({
+          event: 'auth.magic_link.sky_lookup_failed',
+          route: '/api/auth/magic-link',
+          details: { email: email.toLowerCase() },
+          error: skyError,
+        });
+      }
+    }
+
+    if (!userData && !canProvisionFromSky) {
       // Don't reveal whether email exists for security
       return NextResponse.json(
         { success: true, message: 'If an account exists, a magic link has been sent' }
       );
     }
 
+    if (scope === 'admin' && !userData) {
+      return NextResponse.json(
+        { success: true, message: 'If an admin account exists, a magic link has been sent' }
+      );
+    }
+
     if (scope === 'admin') {
+      const adminUserData = userData;
+      if (!adminUserData) {
+        return NextResponse.json(
+          { success: true, message: 'If an admin account exists, a magic link has been sent' }
+        );
+      }
+
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role_key')
-        .eq('user_id', userData.id);
+        .eq('user_id', adminUserData.id);
       const roles = (roleData ?? []).map((row) => row.role_key);
-      const permissions = resolveAdminPermissions(Boolean(userData.is_admin), roles);
+      const permissions = resolveAdminPermissions(Boolean(adminUserData.is_admin), roles);
       if (!hasAdminPermission('admin:access', permissions)) {
         return NextResponse.json(
           { success: true, message: 'If an admin account exists, a magic link has been sent' }
@@ -102,7 +135,7 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase(),
       options: {
-        shouldCreateUser: false,
+        shouldCreateUser: !userData && canProvisionFromSky && scope === 'portal',
         emailRedirectTo: verifyUrl.toString(),
       },
     });
@@ -127,7 +160,12 @@ export async function POST(request: NextRequest) {
     logInfo({
       event: 'auth.magic_link.sent',
       route: '/api/auth/magic-link',
-      details: { email: email.toLowerCase(), scope, redirectTo },
+      details: {
+        email: email.toLowerCase(),
+        scope,
+        redirectTo,
+        createdFromSky: !userData && canProvisionFromSky,
+      },
     });
 
     return NextResponse.json(

@@ -20,11 +20,10 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
 import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
-import { getLocalSettings, saveLocalSettings } from "@/lib/local-storage";
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { preferences, isLoading } = usePreferences(user?.id);
+  const { preferences, isLoading, updatePreferences } = usePreferences(user?.id);
 
   const [emailNewsletter, setEmailNewsletter] = useState(true);
   const [emailEvents, setEmailEvents] = useState(true);
@@ -38,44 +37,42 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Restore from local storage or preferences
   useEffect(() => {
-    const local = getLocalSettings();
-    if (Object.keys(local).length > 0) {
-      setEmailNewsletter(local.emailNewsletter as boolean ?? true);
-      setEmailEvents(local.emailEvents as boolean ?? true);
-      setEmailGiving(local.emailGiving as boolean ?? true);
-      setEmailReports(local.emailReports as boolean ?? true);
-      setSmsEnabled(local.smsEnabled as boolean ?? false);
-      setSmsGiftConfirmations(local.smsGiftConfirmations as boolean ?? false);
-      setMailEnabled(local.mailEnabled as boolean ?? true);
-      setMailAnnualReport(local.mailAnnualReport as boolean ?? true);
-      setReportPeriod(local.reportPeriod as string ?? "quarterly");
-    } else if (preferences) {
-      setEmailNewsletter(preferences.emailNewsletterMonthly);
-      setEmailEvents(preferences.emailEvents);
-      setEmailGiving(preferences.emailGivingConfirmations);
-      setEmailReports(preferences.emailQuarterlyReport);
-      setSmsEnabled(preferences.smsEnabled);
-      setSmsGiftConfirmations(preferences.smsGiftConfirmations);
-      setMailEnabled(preferences.mailEnabled);
-      setMailAnnualReport(preferences.mailAnnualReport);
-    }
+    if (!preferences) return;
+    setEmailNewsletter(preferences.emailNewsletterMonthly);
+    setEmailEvents(preferences.emailEvents);
+    setEmailGiving(preferences.emailGivingConfirmations);
+    setEmailReports(preferences.emailQuarterlyReport || preferences.emailAnnualReport);
+    setSmsEnabled(preferences.smsEnabled);
+    setSmsGiftConfirmations(preferences.smsGiftConfirmations);
+    setMailEnabled(preferences.mailEnabled);
+    setMailAnnualReport(preferences.mailAnnualReport);
+    setReportPeriod(preferences.reportPeriod);
   }, [preferences]);
 
-  function handleSave() {
+  async function handleSave() {
     setSaving(true);
-    const settings = {
-      emailNewsletter, emailEvents, emailGiving, emailReports,
-      smsEnabled, smsGiftConfirmations, mailEnabled, mailAnnualReport, reportPeriod,
-    };
-    saveLocalSettings(settings);
-    setTimeout(() => {
+    try {
+      await updatePreferences({
+        emailNewsletterMonthly: emailNewsletter,
+        emailEvents,
+        emailGivingConfirmations: emailGiving,
+        emailQuarterlyReport: emailReports,
+        emailAnnualReport: emailReports,
+        smsEnabled,
+        smsGiftConfirmations,
+        mailEnabled,
+        mailAnnualReport,
+        reportPeriod: reportPeriod === "annual" ? "annual" : "quarterly",
+      });
       setSaving(false);
       setSaved(true);
       toast.success("Preferences saved");
       setTimeout(() => setSaved(false), 2000);
-    }, 600);
+    } catch {
+      setSaving(false);
+      toast.error("Failed to save preferences");
+    }
   }
 
   function downloadReport() {

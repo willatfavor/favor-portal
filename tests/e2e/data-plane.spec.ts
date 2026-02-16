@@ -167,4 +167,103 @@ test.describe("API data-plane regression (dev bypass)", () => {
     const updatedPayload = (await update.json()) as { user?: { firstName?: string } };
     expect(updatedPayload.user?.firstName).toBe(updatedFirstName);
   });
+
+  test("profile endpoint persists user profile details", async ({ request }) => {
+    const before = await request.get("/api/profile");
+    expect(before.status()).toBe(200);
+
+    const patch = await request.patch("/api/profile", {
+      data: {
+        firstName: "Emma",
+        lastName: "Carter",
+        phone: "813-555-1212",
+        street: "123 QA Street",
+        city: "Valrico",
+        state: "FL",
+        zip: "33594",
+      },
+    });
+    expect(patch.status()).toBe(200);
+
+    const after = await request.get("/api/profile");
+    expect(after.status()).toBe(200);
+    const payload = (await after.json()) as {
+      profile?: { phone?: string; street?: string; city?: string; state?: string; zip?: string };
+    };
+    expect(payload.profile?.phone).toContain("813");
+    expect(payload.profile?.street).toContain("QA");
+  });
+
+  test("giving goals CRUD endpoint works", async ({ request }) => {
+    const create = await request.post("/api/giving/goals", {
+      data: {
+        name: "Playwright Goal",
+        targetAmount: 777,
+        deadline: "2026-12-31",
+        category: "custom",
+        description: "Created from QA",
+      },
+    });
+    expect(create.status()).toBe(201);
+    const created = (await create.json()) as { goal?: { id?: string; name?: string } };
+    expect(created.goal?.id).toBeTruthy();
+
+    const goalId = created.goal?.id as string;
+    const update = await request.patch(`/api/giving/goals/${goalId}`, {
+      data: {
+        name: "Playwright Goal Updated",
+        targetAmount: 999,
+      },
+    });
+    expect(update.status()).toBe(200);
+
+    const list = await request.get("/api/giving/goals");
+    expect(list.status()).toBe(200);
+    const listPayload = (await list.json()) as { goals?: Array<{ id?: string; name?: string }> };
+    expect(listPayload.goals?.some((goal) => goal.id === goalId)).toBeTruthy();
+
+    const remove = await request.delete(`/api/giving/goals/${goalId}`);
+    expect(remove.status()).toBe(200);
+  });
+
+  test("blackbaud, comms, and ai endpoints respond", async ({ request }) => {
+    const constituent = await request.get("/api/blackbaud/constituent?email=partner@example.com");
+    expect(constituent.status()).toBe(200);
+
+    const gifts = await request.get("/api/blackbaud/gifts?constituentId=BB-001-IND");
+    expect(gifts.status()).toBe(200);
+
+    const emailSend = await request.post("/api/comms/email", {
+      data: {
+        to: "qa@example.com",
+        subject: "QA email",
+        text: "Hello from Playwright",
+      },
+    });
+    expect(emailSend.status()).toBe(200);
+
+    const smsSend = await request.post("/api/comms/sms", {
+      data: {
+        to: "+15555550100",
+        body: "QA SMS",
+      },
+    });
+    expect(smsSend.status()).toBe(200);
+
+    const recommendations = await request.post("/api/ai/recommendations", {
+      data: {
+        userInterests: ["discipleship", "education"],
+        completedCourses: [],
+        userType: "individual",
+      },
+    });
+    expect(recommendations.status()).toBe(200);
+
+    const chat = await request.post("/api/ai/chat", {
+      data: {
+        question: "What is Favor International?",
+      },
+    });
+    expect(chat.status()).toBe(200);
+  });
 });

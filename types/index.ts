@@ -91,8 +91,30 @@ export interface CommunicationPreferences {
   mailHolidayCard: boolean;
   mailAppeals: boolean;
   
+  reportPeriod: 'quarterly' | 'annual';
   blackbaudSolicitCodes: string[];
   lastSyncedAt?: string;
+  updatedAt: string;
+}
+
+export interface UserProfileDetails {
+  userId: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
+export interface GivingGoal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string;
+  category: 'annual' | 'project' | 'monthly' | 'custom';
+  description?: string;
+  createdAt: string;
   updatedAt: string;
 }
 

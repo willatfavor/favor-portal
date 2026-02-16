@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,41 +35,43 @@ import {
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
 import { PageBreadcrumb, PageBackButton } from "@/components/giving/page-navigation";
+import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
-
-interface GivingGoal {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string;
-  category: "annual" | "project" | "monthly" | "custom";
-  description?: string;
-}
+import type { GivingGoal } from "@/types";
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useState<GivingGoal[]>([
-    {
-      id: "goal-1",
-      name: "2026 Annual Giving",
-      targetAmount: 5000,
-      currentAmount: 2400,
-      deadline: "2026-12-31",
-      category: "annual",
-      description: "My commitment for the year",
-    },
-  ]);
+  const [goals, setGoals] = useState<GivingGoal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<GivingGoal | null>(null);
   const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formTarget, setFormTarget] = useState("");
   const [formDeadline, setFormDeadline] = useState("");
   const [formCategory, setFormCategory] = useState<GivingGoal["category"]>("custom");
   const [formDescription, setFormDescription] = useState("");
+
+  async function loadGoals() {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/giving/goals", { cache: "no-store" });
+      if (!response.ok) throw new Error("Unable to load goals");
+      const payload = (await response.json()) as { goals?: GivingGoal[] };
+      setGoals(payload.goals ?? []);
+    } catch {
+      toast.error("Unable to load giving goals");
+      setGoals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadGoals();
+  }, []);
 
   function resetForm() {
     setFormName("");
@@ -79,7 +81,7 @@ export default function GoalsPage() {
     setFormDescription("");
   }
 
-  function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     const targetAmount = parseFloat(formTarget);
     if (!formName || targetAmount <= 0 || !formDeadline) {
@@ -87,53 +89,101 @@ export default function GoalsPage() {
       return;
     }
 
-    const newGoal: GivingGoal = {
-      id: `goal-${Date.now()}`,
-      name: formName,
-      targetAmount,
-      currentAmount: 0,
-      deadline: formDeadline,
-      category: formCategory,
-      description: formDescription || undefined,
-    };
+    setIsMutating(true);
+    try {
+      const response = await fetch("/api/giving/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName,
+          targetAmount,
+          currentAmount: 0,
+          deadline: formDeadline,
+          category: formCategory,
+          description: formDescription || undefined,
+        }),
+      });
 
-    setGoals([...goals, newGoal]);
-    toast.success("Goal created!");
-    setIsCreateOpen(false);
-    resetForm();
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Unable to create goal");
+      }
+
+      const payload = (await response.json()) as { goal?: GivingGoal };
+      if (payload.goal) {
+        setGoals((prev) => [payload.goal as GivingGoal, ...prev]);
+      }
+      toast.success("Goal created");
+      setIsCreateOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create goal");
+    } finally {
+      setIsMutating(false);
+    }
   }
 
-  function handleUpdate(e: React.FormEvent) {
+  async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!editingGoal) return;
 
-    const targetAmount = parseFloat(formTarget) || editingGoal.targetAmount;
+    const targetAmount = parseFloat(formTarget);
+    setIsMutating(true);
+    try {
+      const response = await fetch(`/api/giving/goals/${editingGoal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName || editingGoal.name,
+          targetAmount: Number.isFinite(targetAmount) && targetAmount > 0 ? targetAmount : editingGoal.targetAmount,
+          deadline: formDeadline || editingGoal.deadline,
+          category: formCategory,
+          description: formDescription || null,
+        }),
+      });
 
-    setGoals(
-      goals.map((g) =>
-        g.id === editingGoal.id
-          ? {
-              ...g,
-              name: formName || g.name,
-              targetAmount,
-              deadline: formDeadline || g.deadline,
-              category: formCategory,
-              description: formDescription || g.description,
-            }
-          : g
-      )
-    );
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Unable to update goal");
+      }
 
-    toast.success("Goal updated!");
-    setEditingGoal(null);
-    resetForm();
+      const payload = (await response.json()) as { goal?: GivingGoal };
+      if (payload.goal) {
+        setGoals((prev) => prev.map((goal) => (goal.id === editingGoal.id ? payload.goal as GivingGoal : goal)));
+      }
+
+      toast.success("Goal updated");
+      setEditingGoal(null);
+      resetForm();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update goal");
+    } finally {
+      setIsMutating(false);
+    }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deletingGoalId) return;
-    setGoals(goals.filter((g) => g.id !== deletingGoalId));
-    toast.success("Goal deleted");
-    setDeletingGoalId(null);
+
+    setIsMutating(true);
+    try {
+      const response = await fetch(`/api/giving/goals/${deletingGoalId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Unable to delete goal");
+      }
+
+      setGoals((prev) => prev.filter((goal) => goal.id !== deletingGoalId));
+      toast.success("Goal deleted");
+      setDeletingGoalId(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete goal");
+    } finally {
+      setIsMutating(false);
+    }
   }
 
   function openEdit(goal: GivingGoal) {
@@ -145,14 +195,17 @@ export default function GoalsPage() {
     setFormDescription(goal.description || "");
   }
 
-  const totalTarget = goals.reduce((sum, g) => sum + g.targetAmount, 0);
-  const totalCurrent = goals.reduce((sum, g) => sum + g.currentAmount, 0);
-  const completedGoals = goals.filter((g) => g.currentAmount >= g.targetAmount).length;
-  const activeGoals = goals.filter((g) => g.currentAmount < g.targetAmount).length;
+  const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+  const totalCurrent = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+  const completedGoals = goals.filter((goal) => goal.currentAmount >= goal.targetAmount).length;
+  const activeGoals = goals.filter((goal) => goal.currentAmount < goal.targetAmount).length;
+
+  if (isLoading) {
+    return <PortalPageSkeleton />;
+  }
 
   return (
     <div className="space-y-10">
-      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <PageBackButton href="/giving" label="Back to Giving" />
@@ -169,7 +222,6 @@ export default function GoalsPage() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
@@ -219,7 +271,6 @@ export default function GoalsPage() {
         </Card>
       </div>
 
-      {/* Goals List */}
       <section>
         <SectionHeader title="Your Goals" />
         {goals.length > 0 ? (
@@ -270,7 +321,7 @@ export default function GoalsPage() {
                       </div>
 
                       <div className="flex-1 lg:max-w-md">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="mb-2 flex items-center justify-between">
                           <span className="text-sm font-medium text-[#1a1a1a]">
                             {formatCurrency(goal.currentAmount)} of {formatCurrency(goal.targetAmount)}
                           </span>
@@ -312,7 +363,6 @@ export default function GoalsPage() {
         )}
       </section>
 
-      {/* Create Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -346,7 +396,7 @@ export default function GoalsPage() {
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select value={formCategory} onValueChange={(v) => setFormCategory(v as GivingGoal["category"])}>
+              <Select value={formCategory} onValueChange={(value) => setFormCategory(value as GivingGoal["category"])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -379,13 +429,14 @@ export default function GoalsPage() {
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#2b4d24] hover:bg-[#1a3a15]">Create Goal</Button>
+              <Button type="submit" className="bg-[#2b4d24] hover:bg-[#1a3a15]" disabled={isMutating}>
+                {isMutating ? "Creating..." : "Create Goal"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editingGoal} onOpenChange={() => setEditingGoal(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -410,7 +461,7 @@ export default function GoalsPage() {
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select value={formCategory} onValueChange={(v) => setFormCategory(v as GivingGoal["category"])}>
+              <Select value={formCategory} onValueChange={(value) => setFormCategory(value as GivingGoal["category"])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -434,13 +485,14 @@ export default function GoalsPage() {
               <Button type="button" variant="outline" onClick={() => setEditingGoal(null)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-[#2b4d24] hover:bg-[#1a3a15]">Save Changes</Button>
+              <Button type="submit" className="bg-[#2b4d24] hover:bg-[#1a3a15]" disabled={isMutating}>
+                {isMutating ? "Saving..." : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <Dialog open={!!deletingGoalId} onOpenChange={() => setDeletingGoalId(null)}>
         <DialogContent>
           <DialogHeader>
@@ -451,7 +503,9 @@ export default function GoalsPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeletingGoalId(null)}>Keep Goal</Button>
-            <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Delete</Button>
+            <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700" disabled={isMutating}>
+              {isMutating ? "Deleting..." : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

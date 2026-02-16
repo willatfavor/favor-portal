@@ -19,6 +19,8 @@ import type {
   CourseCohortMember,
   CourseDiscussionThread,
   CourseDiscussionReply,
+  UserProfileDetails,
+  GivingGoal,
 } from '@/types';
 
 export const MOCK_USERS: User[] = [
@@ -843,8 +845,34 @@ export const MOCK_PREFERENCES: CommunicationPreferences[] = [
     mailAnnualReport: true,
     mailHolidayCard: true,
     mailAppeals: false,
+    reportPeriod: 'quarterly',
     blackbaudSolicitCodes: ['EMAIL_ONLY'],
     updatedAt: '2026-01-15T12:00:00Z',
+  },
+];
+
+export const MOCK_PROFILE_DETAILS: UserProfileDetails[] = [
+  {
+    userId: 'user-001',
+    street: '3433 Lithia Pinecrest Rd #356',
+    city: 'Valrico',
+    state: 'FL',
+    zip: '33596',
+  },
+];
+
+export const MOCK_GIVING_GOALS: GivingGoal[] = [
+  {
+    id: 'goal-001',
+    userId: 'user-001',
+    name: '2026 Annual Giving',
+    targetAmount: 5000,
+    currentAmount: 2400,
+    deadline: '2026-12-31',
+    category: 'annual',
+    description: 'My commitment for the year',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
   },
 ];
 

@@ -106,12 +106,16 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith('/dashboard') || 
       pathname.startsWith('/giving') || 
       pathname.startsWith('/courses') || 
+      pathname.startsWith('/content') ||
       pathname.startsWith('/profile') || 
       pathname.startsWith('/settings') ||
       pathname.startsWith('/foundation') ||
       pathname.startsWith('/church') ||
       pathname.startsWith('/daf') ||
-      pathname.startsWith('/ambassador')) {
+      pathname.startsWith('/ambassador') ||
+      pathname.startsWith('/major-donor') ||
+      pathname.startsWith('/volunteer') ||
+      pathname.startsWith('/assistant')) {
     
     const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();

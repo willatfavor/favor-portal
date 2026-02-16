@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import type { User as UserType } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,14 +18,76 @@ import { ContactSupportDialog } from "@/components/portal/contact-support-dialog
 import { PortalPageSkeleton } from "@/components/portal/portal-page-skeleton";
 
 export default function ProfilePage() {
-  const { user, isLoading, updateDevUser, isDev } = useAuth();
+  const { user, isLoading, refreshUser } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [form, setForm] = useState<Record<string, string>>({});
 
   const val = (key: string, fallback: string) => form[key] ?? fallback;
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+    const activeUser = user;
+
+    let cancelled = false;
+    setProfileLoading(true);
+
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profile", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Unable to load profile");
+        }
+
+        const payload = (await response.json()) as {
+          profile?: Record<string, string>;
+        };
+
+        if (!cancelled && payload.profile) {
+          setForm({
+            firstName: payload.profile.firstName ?? activeUser.firstName,
+            lastName: payload.profile.lastName ?? activeUser.lastName,
+            email: payload.profile.email ?? activeUser.email,
+            phone: payload.profile.phone ?? activeUser.phone ?? "",
+            street: payload.profile.street ?? "",
+            city: payload.profile.city ?? "",
+            state: payload.profile.state ?? "",
+            zip: payload.profile.zip ?? "",
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error("Unable to load profile details");
+          setForm({
+            firstName: activeUser.firstName,
+            lastName: activeUser.lastName,
+            email: activeUser.email,
+            phone: activeUser.phone ?? "",
+            street: "",
+            city: "",
+            state: "",
+            zip: "",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false);
+        }
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  if (isLoading || profileLoading) {
     return <PortalPageSkeleton />;
   }
 
@@ -36,32 +97,57 @@ export default function ProfilePage() {
 
   const tier = getGivingTier(user?.lifetimeGivingTotal ?? 0);
 
-  function handleSave() {
+  async function handleSave() {
+    if (!user) return;
+
     setSaving(true);
-    setTimeout(() => {
-      if (isDev && updateDevUser && user) {
-        const updates: Partial<UserType> = {};
-        if (form.firstName && form.firstName !== user.firstName) updates.firstName = form.firstName;
-        if (form.lastName && form.lastName !== user.lastName) updates.lastName = form.lastName;
-        if (form.email && form.email !== user.email) updates.email = form.email;
-        if (form.phone && form.phone !== user.phone) updates.phone = form.phone;
-        if (Object.keys(updates).length > 0) {
-          updateDevUser(updates);
-          fetch("/api/activity", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "profile_updated",
-              metadata: { fields: Object.keys(updates).join(",") },
-            }),
-          }).catch(() => undefined);
-        }
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: val("firstName", user.firstName),
+          lastName: val("lastName", user.lastName),
+          email: val("email", user.email),
+          phone: val("phone", user.phone ?? ""),
+          street: val("street", ""),
+          city: val("city", ""),
+          state: val("state", ""),
+          zip: val("zip", ""),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Failed to save profile");
       }
+
+      const payload = (await response.json()) as {
+        profile?: Record<string, string>;
+      };
+
+      if (payload.profile) {
+        setForm({
+          firstName: payload.profile.firstName ?? val("firstName", user.firstName),
+          lastName: payload.profile.lastName ?? val("lastName", user.lastName),
+          email: payload.profile.email ?? val("email", user.email),
+          phone: payload.profile.phone ?? val("phone", user.phone ?? ""),
+          street: payload.profile.street ?? val("street", ""),
+          city: payload.profile.city ?? val("city", ""),
+          state: payload.profile.state ?? val("state", ""),
+          zip: payload.profile.zip ?? val("zip", ""),
+        });
+      }
+
+      await refreshUser();
       setSaving(false);
       setSaved(true);
       toast.success("Profile updated");
       setTimeout(() => setSaved(false), 2000);
-    }, 800);
+    } catch (error) {
+      setSaving(false);
+      toast.error(error instanceof Error ? error.message : "Unable to save profile");
+    }
   }
 
   return (
@@ -139,7 +225,8 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="profile-email">Email</Label>
-                <Input id="profile-email" type="email" value={val("email", user?.email ?? "")} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                <Input id="profile-email" type="email" value={val("email", user?.email ?? "")} disabled />
+                <p className="text-xs text-[#999999]">Email is managed by your login method.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="profile-phone">Phone</Label>

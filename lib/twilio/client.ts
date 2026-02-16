@@ -4,12 +4,15 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
-const client = twilio(accountSid, authToken);
+const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 export async function sendSMS(to: string, body: string) {
-  if (!accountSid || !authToken || !fromNumber) {
-    console.log('Twilio not configured, would send SMS:', { to, body });
-    return { success: true, sid: 'mock-sid' };
+  if (!accountSid || !authToken || !fromNumber || !client) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Twilio is not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER.');
+    }
+    console.log('Twilio not configured, skipping SMS send in development:', { to, body });
+    return { success: true, sid: 'dev-sms-skip' };
   }
 
   try {

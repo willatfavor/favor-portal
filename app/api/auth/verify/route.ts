@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { logError, logInfo } from '@/lib/logger';
 import { hasAdminPermission, resolveAdminPermissions } from '@/lib/admin/roles';
+import { blackbaudClient } from '@/lib/blackbaud/client';
+import { mapConstituentToUserInsert } from '@/lib/blackbaud/mappers';
 
 const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -90,8 +92,74 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update last login timestamp and enforce admin scope when requested.
+    // Ensure a portal user row exists for the authenticated Supabase user.
     if (data.user) {
+      if (!data.user.email) {
+        return NextResponse.json(
+          { error: 'Missing authenticated user email' },
+          { status: 500 }
+        );
+      }
+
+      const normalizedEmail = data.user.email.toLowerCase();
+      const { data: existingUser, error: existingUserError } = await supabase
+        .from('users')
+        .select('id,is_admin')
+        .eq('id', data.user.id)
+        .maybeSingle();
+
+      if (existingUserError && existingUserError.code !== 'PGRST116') {
+        throw existingUserError;
+      }
+
+      if (!existingUser) {
+        let constituent = null;
+        try {
+          constituent = await blackbaudClient.getConstituentByEmail(normalizedEmail);
+        } catch (skyError) {
+          logError({
+            event: 'auth.verify.sky_lookup_failed',
+            route: '/api/auth/verify',
+            details: { email: normalizedEmail },
+            error: skyError,
+          });
+        }
+
+        const userInsert = mapConstituentToUserInsert(
+          data.user.id,
+          normalizedEmail,
+          constituent
+        );
+
+        const { error: userInsertError } = await supabase
+          .from('users')
+          .upsert(userInsert, { onConflict: 'id' });
+
+        if (userInsertError) {
+          logError({
+            event: 'auth.verify.user_insert_failed',
+            route: '/api/auth/verify',
+            userId: data.user.id,
+            details: { email: normalizedEmail },
+            error: userInsertError,
+          });
+          return NextResponse.json(
+            { error: 'Unable to provision portal user record' },
+            { status: 500 }
+          );
+        }
+
+        await supabase.from('communication_preferences').upsert(
+          {
+            user_id: data.user.id,
+            report_period: 'quarterly',
+            blackbaud_solicit_codes: constituent?.solicitCodes ?? [],
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
+      }
+
       await supabase
         .from('users')
         .update({ last_login: new Date().toISOString() })

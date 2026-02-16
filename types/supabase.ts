@@ -22,6 +22,8 @@ export interface Database {
           rdd_assignment: string | null;
           avatar_url: string | null;
           is_admin: boolean;
+          onboarding_required: boolean;
+          onboarding_completed_at: string | null;
           created_at: string;
           last_login: string | null;
         };
@@ -37,6 +39,8 @@ export interface Database {
           rdd_assignment?: string | null;
           avatar_url?: string | null;
           is_admin?: boolean;
+          onboarding_required?: boolean;
+          onboarding_completed_at?: string | null;
           created_at?: string;
           last_login?: string | null;
         };
@@ -52,6 +56,8 @@ export interface Database {
           rdd_assignment?: string | null;
           avatar_url?: string | null;
           is_admin?: boolean;
+          onboarding_required?: boolean;
+          onboarding_completed_at?: string | null;
           created_at?: string;
           last_login?: string | null;
         };
@@ -155,6 +161,7 @@ export interface Database {
           mail_annual_report: boolean;
           mail_holiday_card: boolean;
           mail_appeals: boolean;
+          report_period: string;
           blackbaud_solicit_codes: string[];
           last_synced_at: string | null;
           updated_at: string;
@@ -178,6 +185,7 @@ export interface Database {
           mail_annual_report?: boolean;
           mail_holiday_card?: boolean;
           mail_appeals?: boolean;
+          report_period?: string;
           blackbaud_solicit_codes?: string[];
           last_synced_at?: string | null;
           updated_at?: string;
@@ -201,8 +209,81 @@ export interface Database {
           mail_annual_report?: boolean;
           mail_holiday_card?: boolean;
           mail_appeals?: boolean;
+          report_period?: string;
           blackbaud_solicit_codes?: string[];
           last_synced_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_profile_details: {
+        Row: {
+          id: string;
+          user_id: string;
+          street: string | null;
+          city: string | null;
+          state: string | null;
+          zip: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          street?: string | null;
+          city?: string | null;
+          state?: string | null;
+          zip?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      user_giving_goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          target_amount: number;
+          current_amount: number;
+          deadline: string;
+          category: string;
+          description: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          target_amount: number;
+          current_amount?: number;
+          deadline: string;
+          category?: string;
+          description?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          target_amount?: number;
+          current_amount?: number;
+          deadline?: string;
+          category?: string;
+          description?: string | null;
+          created_at?: string;
           updated_at?: string;
         };
         Relationships: [];

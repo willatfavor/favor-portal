@@ -4,14 +4,24 @@ import { expect, test } from "@playwright/test";
 const portalPaths = [
   "/login",
   "/dashboard",
+  "/profile",
+  "/settings",
   "/content",
   "/content/content-001",
   "/courses",
   "/courses/course-001",
   "/giving",
+  "/giving/goals",
   "/giving/history",
   "/giving/impact",
   "/giving/recurring",
+  "/major-donor",
+  "/volunteer",
+  "/assistant",
+  "/ambassador",
+  "/church",
+  "/daf",
+  "/foundation",
 ];
 
 // Admin surfaces available in the same dev bypass environment.
