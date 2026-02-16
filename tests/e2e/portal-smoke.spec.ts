@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+// Core unauthenticated portal routes that should always render in dev bypass mode.
 const portalPaths = [
   "/login",
   "/dashboard",
@@ -13,6 +14,7 @@ const portalPaths = [
   "/giving/recurring",
 ];
 
+// Admin surfaces available in the same dev bypass environment.
 const adminPaths = [
   "/admin",
   "/admin/users",
@@ -76,6 +78,7 @@ test("backend recurring + receipt endpoints work in dev bypass", async ({ reques
   expect(cancelRecurring.status()).toBe(200);
 });
 
+// These routes are expected to require auth when no session is present.
 test("protected backend endpoints enforce auth", async ({ request }) => {
   const givingHistory = await request.get("/api/giving/history");
   expect(givingHistory.status()).toBe(401);
