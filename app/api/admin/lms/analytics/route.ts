@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminAccessContext, requireAdminPermission } from "@/lib/admin/permissions";
+import { buildLmsRiskSignals } from "@/lib/lms/risk";
 
 export async function GET() {
   try {
@@ -19,7 +20,18 @@ export async function GET() {
       return NextResponse.json({ error: "Insufficient permission" }, { status: 403 });
     }
 
-    const [coursesResult, modulesResult, progressResult, attemptsResult, eventsResult, certificatesResult] =
+    const [
+      coursesResult,
+      modulesResult,
+      progressResult,
+      attemptsResult,
+      eventsResult,
+      certificatesResult,
+      usersResult,
+      assignmentsResult,
+      assignmentSubmissionsResult,
+      interventionsResult,
+    ] =
       await Promise.all([
         supabase.from("courses").select("id,title"),
         supabase.from("course_modules").select("id,course_id,title,sort_order,module_type"),
@@ -27,6 +39,12 @@ export async function GET() {
         supabase.from("user_quiz_attempts").select("module_id,score_percent,passed"),
         supabase.from("course_module_events").select("module_id,event_type,user_id,watch_time_seconds,created_at"),
         supabase.from("user_course_certificates").select("course_id,user_id,issued_at"),
+        supabase.from("users").select("id,first_name,last_name,email"),
+        supabase.from("course_assignments").select("id,course_id,due_at,passing_percent,is_published"),
+        supabase
+          .from("course_assignment_submissions")
+          .select("assignment_id,user_id,status,score_percent,submitted_at,graded_at"),
+        supabase.from("lms_interventions").select("id,status"),
       ]);
 
     if (
@@ -35,7 +53,11 @@ export async function GET() {
       progressResult.error ||
       attemptsResult.error ||
       eventsResult.error ||
-      certificatesResult.error
+      certificatesResult.error ||
+      usersResult.error ||
+      assignmentsResult.error ||
+      assignmentSubmissionsResult.error ||
+      interventionsResult.error
     ) {
       const errorMessage =
         coursesResult.error?.message ||
@@ -44,6 +66,10 @@ export async function GET() {
         attemptsResult.error?.message ||
         eventsResult.error?.message ||
         certificatesResult.error?.message ||
+        usersResult.error?.message ||
+        assignmentsResult.error?.message ||
+        assignmentSubmissionsResult.error?.message ||
+        interventionsResult.error?.message ||
         "Analytics query failed";
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
@@ -54,6 +80,10 @@ export async function GET() {
     const attempts = attemptsResult.data ?? [];
     const events = eventsResult.data ?? [];
     const certificates = certificatesResult.data ?? [];
+    const users = usersResult.data ?? [];
+    const assignments = assignmentsResult.data ?? [];
+    const assignmentSubmissions = assignmentSubmissionsResult.data ?? [];
+    const interventions = interventionsResult.data ?? [];
 
     const cohortMap = new Map<string, { learners: Set<string>; completions: number }>();
     const firstSeenByUser = new Map<string, string>();
@@ -160,6 +190,43 @@ export async function GET() {
       })
       .sort((a, b) => b.totalWatchSeconds - a.totalWatchSeconds);
 
+    const riskSignals = buildLmsRiskSignals({
+      users: users.map((row) => ({
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+      })),
+      courses: courses.map((row) => ({ id: row.id, title: row.title })),
+      modules: modules.map((row) => ({ id: row.id, courseId: row.course_id })),
+      progressRows: progressRows.map((row) => ({
+        userId: row.user_id,
+        moduleId: row.module_id,
+        completed: row.completed,
+        lastWatchedAt: row.last_watched_at,
+        completedAt: row.completed_at,
+      })),
+      assignments: assignments.map((row) => ({
+        id: row.id,
+        courseId: row.course_id,
+        dueAt: row.due_at,
+        passingPercent: row.passing_percent,
+        isPublished: row.is_published,
+      })),
+      submissions: assignmentSubmissions.map((row) => ({
+        assignmentId: row.assignment_id,
+        userId: row.user_id,
+        status: row.status as "draft" | "submitted" | "returned" | "graded",
+        scorePercent: row.score_percent,
+        submittedAt: row.submitted_at,
+        gradedAt: row.graded_at,
+      })),
+    });
+
+    const openInterventions = interventions.filter(
+      (row) => row.status === "open" || row.status === "in_progress"
+    ).length;
+
     return NextResponse.json(
       {
         success: true,
@@ -169,6 +236,8 @@ export async function GET() {
           totalCertificates: certificates.length,
           totalQuizAttempts: attempts.length,
           totalEvents: events.length,
+          atRiskLearners: riskSignals.length,
+          openInterventions,
         },
         cohorts,
         dropoff,

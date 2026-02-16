@@ -19,6 +19,12 @@ import type {
   CourseCohortMember,
   CourseDiscussionThread,
   CourseDiscussionReply,
+  CourseAssignment,
+  CourseAssignmentSubmission,
+  LearningPath,
+  LearningPathCourse,
+  UserLearningPathProgress,
+  LmsIntervention,
 } from '@/types';
 import {
   MOCK_USERS,
@@ -41,6 +47,12 @@ import {
   MOCK_COHORT_MEMBERS,
   MOCK_DISCUSSION_THREADS,
   MOCK_DISCUSSION_REPLIES,
+  MOCK_ASSIGNMENTS,
+  MOCK_ASSIGNMENT_SUBMISSIONS,
+  MOCK_LEARNING_PATHS,
+  MOCK_LEARNING_PATH_COURSES,
+  MOCK_USER_LEARNING_PATH_PROGRESS,
+  MOCK_LMS_INTERVENTIONS,
 } from './mock-data';
 
 const STORAGE_KEYS = {
@@ -64,6 +76,12 @@ const STORAGE_KEYS = {
   cohortMembers: 'favor_mock_course_cohort_members',
   discussionThreads: 'favor_mock_discussion_threads',
   discussionReplies: 'favor_mock_discussion_replies',
+  assignments: 'favor_mock_course_assignments',
+  assignmentSubmissions: 'favor_mock_course_assignment_submissions',
+  learningPaths: 'favor_mock_learning_paths',
+  learningPathCourses: 'favor_mock_learning_path_courses',
+  learningPathProgress: 'favor_mock_learning_path_progress',
+  interventions: 'favor_mock_lms_interventions',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -121,6 +139,12 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.cohortMembers, MOCK_COHORT_MEMBERS);
   seed(STORAGE_KEYS.discussionThreads, MOCK_DISCUSSION_THREADS);
   seed(STORAGE_KEYS.discussionReplies, MOCK_DISCUSSION_REPLIES);
+  seed(STORAGE_KEYS.assignments, MOCK_ASSIGNMENTS);
+  seed(STORAGE_KEYS.assignmentSubmissions, MOCK_ASSIGNMENT_SUBMISSIONS);
+  seed(STORAGE_KEYS.learningPaths, MOCK_LEARNING_PATHS);
+  seed(STORAGE_KEYS.learningPathCourses, MOCK_LEARNING_PATH_COURSES);
+  seed(STORAGE_KEYS.learningPathProgress, MOCK_USER_LEARNING_PATH_PROGRESS);
+  seed(STORAGE_KEYS.interventions, MOCK_LMS_INTERVENTIONS);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -484,6 +508,195 @@ export function addMockDiscussionReply(reply: CourseDiscussionReply): void {
     replyCount: threadReplies.length,
     lastActivityAt: reply.createdAt,
   });
+}
+
+export function getMockAssignments(): CourseAssignment[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.assignments, MOCK_ASSIGNMENTS);
+}
+
+export function setMockAssignments(assignments: CourseAssignment[]): void {
+  setItem(STORAGE_KEYS.assignments, assignments);
+}
+
+export function getMockAssignmentsForCourse(
+  courseId: string | undefined,
+  includeUnpublished = false
+): CourseAssignment[] {
+  if (!courseId) return [];
+  return getMockAssignments()
+    .filter((assignment) => assignment.courseId === courseId && (includeUnpublished || assignment.isPublished))
+    .sort((a, b) => {
+      if (a.dueAt && b.dueAt) return a.dueAt > b.dueAt ? 1 : -1;
+      if (a.dueAt && !b.dueAt) return -1;
+      if (!a.dueAt && b.dueAt) return 1;
+      return a.createdAt > b.createdAt ? -1 : 1;
+    });
+}
+
+export function addMockAssignment(assignment: CourseAssignment): void {
+  const assignments = getMockAssignments();
+  setMockAssignments([assignment, ...assignments]);
+}
+
+export function updateMockAssignment(
+  assignmentId: string,
+  updates: Partial<CourseAssignment>
+): void {
+  const assignments = getMockAssignments().map((assignment) =>
+    assignment.id === assignmentId
+      ? { ...assignment, ...updates, updatedAt: new Date().toISOString() }
+      : assignment
+  );
+  setMockAssignments(assignments);
+}
+
+export function getMockAssignmentSubmissions(): CourseAssignmentSubmission[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.assignmentSubmissions, MOCK_ASSIGNMENT_SUBMISSIONS);
+}
+
+export function setMockAssignmentSubmissions(submissions: CourseAssignmentSubmission[]): void {
+  setItem(STORAGE_KEYS.assignmentSubmissions, submissions);
+}
+
+export function getMockAssignmentSubmissionsForAssignment(
+  assignmentId: string | undefined
+): CourseAssignmentSubmission[] {
+  if (!assignmentId) return [];
+  return getMockAssignmentSubmissions()
+    .filter((submission) => submission.assignmentId === assignmentId)
+    .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
+}
+
+export function getMockAssignmentSubmissionForUser(
+  assignmentId: string | undefined,
+  userId: string | undefined
+): CourseAssignmentSubmission | null {
+  if (!assignmentId || !userId) return null;
+  return (
+    getMockAssignmentSubmissions().find(
+      (submission) => submission.assignmentId === assignmentId && submission.userId === userId
+    ) ?? null
+  );
+}
+
+export function upsertMockAssignmentSubmission(submission: CourseAssignmentSubmission): void {
+  const submissions = getMockAssignmentSubmissions();
+  const index = submissions.findIndex(
+    (entry) =>
+      entry.assignmentId === submission.assignmentId && entry.userId === submission.userId
+  );
+  if (index >= 0) {
+    submissions[index] = {
+      ...submissions[index],
+      ...submission,
+      updatedAt: new Date().toISOString(),
+    };
+  } else {
+    submissions.unshift(submission);
+  }
+  setMockAssignmentSubmissions(submissions);
+}
+
+export function getMockLearningPaths(): LearningPath[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.learningPaths, MOCK_LEARNING_PATHS);
+}
+
+export function setMockLearningPaths(paths: LearningPath[]): void {
+  setItem(STORAGE_KEYS.learningPaths, paths);
+}
+
+export function addMockLearningPath(path: LearningPath): void {
+  const paths = getMockLearningPaths();
+  setMockLearningPaths([path, ...paths]);
+}
+
+export function updateMockLearningPath(pathId: string, updates: Partial<LearningPath>): void {
+  const paths = getMockLearningPaths().map((path) =>
+    path.id === pathId ? { ...path, ...updates, updatedAt: new Date().toISOString() } : path
+  );
+  setMockLearningPaths(paths);
+}
+
+export function getMockLearningPathCourses(): LearningPathCourse[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.learningPathCourses, MOCK_LEARNING_PATH_COURSES);
+}
+
+export function setMockLearningPathCourses(pathCourses: LearningPathCourse[]): void {
+  setItem(STORAGE_KEYS.learningPathCourses, pathCourses);
+}
+
+export function getMockCoursesForLearningPath(pathId: string | undefined): LearningPathCourse[] {
+  if (!pathId) return [];
+  return getMockLearningPathCourses()
+    .filter((entry) => entry.learningPathId === pathId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function addMockLearningPathCourse(pathCourse: LearningPathCourse): void {
+  const entries = getMockLearningPathCourses();
+  setMockLearningPathCourses([pathCourse, ...entries]);
+}
+
+export function removeMockLearningPathCourse(pathId: string, courseId: string): void {
+  const entries = getMockLearningPathCourses().filter(
+    (entry) => !(entry.learningPathId === pathId && entry.courseId === courseId)
+  );
+  setMockLearningPathCourses(entries);
+}
+
+export function getMockUserLearningPathProgress(): UserLearningPathProgress[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.learningPathProgress, MOCK_USER_LEARNING_PATH_PROGRESS);
+}
+
+export function setMockUserLearningPathProgress(progressRows: UserLearningPathProgress[]): void {
+  setItem(STORAGE_KEYS.learningPathProgress, progressRows);
+}
+
+export function getMockLearningPathProgressForUser(
+  userId: string | undefined
+): UserLearningPathProgress[] {
+  if (!userId) return [];
+  return getMockUserLearningPathProgress().filter((row) => row.userId === userId);
+}
+
+export function upsertMockLearningPathProgress(progress: UserLearningPathProgress): void {
+  const rows = getMockUserLearningPathProgress();
+  const index = rows.findIndex(
+    (row) =>
+      row.learningPathId === progress.learningPathId &&
+      row.userId === progress.userId
+  );
+  if (index >= 0) {
+    rows[index] = { ...rows[index], ...progress, lastCalculatedAt: new Date().toISOString() };
+  } else {
+    rows.unshift(progress);
+  }
+  setMockUserLearningPathProgress(rows);
+}
+
+export function getMockInterventions(): LmsIntervention[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.interventions, MOCK_LMS_INTERVENTIONS);
+}
+
+export function setMockInterventions(interventions: LmsIntervention[]): void {
+  setItem(STORAGE_KEYS.interventions, interventions);
+}
+
+export function upsertMockIntervention(intervention: LmsIntervention): void {
+  const rows = getMockInterventions();
+  const index = rows.findIndex((row) => row.id === intervention.id);
+  if (index >= 0) {
+    rows[index] = { ...rows[index], ...intervention, updatedAt: new Date().toISOString() };
+  } else {
+    rows.unshift(intervention);
+  }
+  setMockInterventions(rows);
 }
 
 export function getMockGrants(): FoundationGrant[] {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Course, CourseModule } from "@/types";
 import {
   getMockModuleEvents,
@@ -999,6 +1000,17 @@ export default function AdminCoursesPage() {
           <p className="text-sm text-[#666666]">
             Create courses, manage modules, and configure access rules.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/courses/assignments">Assignments and Grading</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/courses/paths">Learning Paths</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/courses/interventions">At-Risk Interventions</Link>
+            </Button>
+          </div>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>

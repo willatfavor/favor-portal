@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { User } from "@/types";
-import { getMockUsers, setMockUsers, updateMockUser } from "@/lib/mock-store";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { User, AdminRoleKey, UserRoleAssignment } from "@/types";
+import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/lib/supabase/client";
+import { isDevBypass } from "@/lib/dev-mode";
+import { ADMIN_ROLES } from "@/lib/admin/roles";
+import {
+  getMockRoles,
+  getMockUsers,
+  setMockRoles,
+  setMockUsers,
+  updateMockUser,
+} from "@/lib/mock-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,15 +34,111 @@ import {
 } from "@/components/ui/dialog";
 import { Search, User as UserIcon } from "lucide-react";
 
+interface RoleAssignmentRow {
+  userId: string;
+  roleKeys: AdminRoleKey[];
+}
+
+function roleLabel(role: AdminRoleKey) {
+  return role.replace("_", " ");
+}
+
+function mapUserRow(row: {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  constituent_type: string;
+  lifetime_giving_total: number;
+  rdd_assignment: string | null;
+  is_admin: boolean;
+  created_at: string;
+  last_login: string | null;
+  phone: string | null;
+  blackbaud_constituent_id: string | null;
+  avatar_url: string | null;
+}): User {
+  return {
+    id: row.id,
+    email: row.email,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    constituentType: row.constituent_type as User["constituentType"],
+    lifetimeGivingTotal: Number(row.lifetime_giving_total),
+    rddAssignment: row.rdd_assignment ?? undefined,
+    isAdmin: row.is_admin,
+    createdAt: row.created_at,
+    lastLogin: row.last_login ?? undefined,
+    phone: row.phone ?? undefined,
+    blackbaudConstituentId: row.blackbaud_constituent_id ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
+  };
+}
+
 export default function AdminUsersPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const { refreshUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [rolesByUserId, setRolesByUserId] = useState<Record<string, AdminRoleKey[]>>({});
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [editing, setEditing] = useState<User | null>(null);
+  const [editingRoles, setEditingRoles] = useState<AdminRoleKey[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+
+    if (isDevBypass) {
+      const mockUsers = getMockUsers();
+      const mockRoles = getMockRoles();
+      const roleMap = mockRoles.reduce<Record<string, AdminRoleKey[]>>((acc, role) => {
+        acc[role.userId] = acc[role.userId] || [];
+        acc[role.userId].push(role.roleKey);
+        return acc;
+      }, {});
+      setUsers(mockUsers);
+      setRolesByUserId(roleMap);
+      return;
+    }
+
+    const [usersResult, rolesResult] = await Promise.all([
+      supabase.from("users").select("*").order("created_at", { ascending: false }),
+      fetch("/api/admin/users/roles"),
+    ]);
+
+    if (usersResult.error) {
+      setError(usersResult.error.message);
+      return;
+    }
+
+    const rolesJson = (await rolesResult.json()) as {
+      assignments?: RoleAssignmentRow[];
+      error?: string;
+    };
+    if (!rolesResult.ok) {
+      setError(rolesJson.error ?? "Unable to load role assignments");
+      return;
+    }
+
+    const roleMap = (rolesJson.assignments ?? []).reduce<Record<string, AdminRoleKey[]>>(
+      (acc, row) => {
+        acc[row.userId] = row.roleKeys ?? [];
+        return acc;
+      },
+      {}
+    );
+
+    setUsers((usersResult.data ?? []).map(mapUserRow));
+    setRolesByUserId(roleMap);
+  }, [supabase]);
 
   useEffect(() => {
-    setUsers(getMockUsers());
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const filtered = useMemo(() => {
     return users.filter((user) => {
@@ -45,23 +151,98 @@ export default function AdminUsersPage() {
     });
   }, [users, query, filter]);
 
-  function handleSave() {
+  function openEditor(user: User) {
+    setEditing({ ...user });
+    setEditingRoles(rolesByUserId[user.id] ?? []);
+    setError(null);
+    setMessage(null);
+  }
+
+  function toggleRole(role: AdminRoleKey) {
+    setEditingRoles((current) =>
+      current.includes(role) ? current.filter((entry) => entry !== role) : [...current, role]
+    );
+  }
+
+  async function handleSave() {
     if (!editing) return;
-    const base = users.find((u) => u.id === editing.id);
-    if (!base) return;
-    const updated = updateMockUser(editing.id, {
-      firstName: editing.firstName,
-      lastName: editing.lastName,
-      email: editing.email,
-      constituentType: editing.constituentType,
-      isAdmin: editing.isAdmin,
-      lifetimeGivingTotal: base.lifetimeGivingTotal,
-      rddAssignment: base.rddAssignment,
-    });
-    if (updated) {
-      const next = users.map((u) => (u.id === updated.id ? updated : u));
-      setUsers(next);
+    setIsSaving(true);
+    setError(null);
+    setMessage(null);
+
+    if (isDevBypass) {
+      const updated = updateMockUser(editing.id, {
+        firstName: editing.firstName,
+        lastName: editing.lastName,
+        email: editing.email,
+        constituentType: editing.constituentType,
+        isAdmin: editing.isAdmin,
+      });
+      if (!updated) {
+        setError("Unable to update user.");
+        setIsSaving(false);
+        return;
+      }
+
+      const previousRoles = getMockRoles().filter((role) => role.userId !== editing.id);
+      const now = new Date().toISOString();
+      const newRoles: UserRoleAssignment[] = editingRoles.map((roleKey) => ({
+        id: `role-${editing.id}-${roleKey}`,
+        userId: editing.id,
+        roleKey,
+        createdAt: now,
+        updatedAt: now,
+      }));
+      setMockRoles([...previousRoles, ...newRoles]);
+      setUsers((current) => current.map((user) => (user.id === editing.id ? updated : user)));
+      setRolesByUserId((current) => ({ ...current, [editing.id]: editingRoles }));
+      setEditing(updated);
+      await refreshUser();
+      setMessage("User and roles updated.");
+      setIsSaving(false);
+      return;
     }
+
+    const { error: userError } = await supabase
+      .from("users")
+      .update({
+        first_name: editing.firstName,
+        last_name: editing.lastName,
+        email: editing.email,
+        constituent_type: editing.constituentType,
+        is_admin: Boolean(editing.isAdmin),
+      })
+      .eq("id", editing.id);
+    if (userError) {
+      setError(userError.message);
+      setIsSaving(false);
+      return;
+    }
+
+    const rolesResponse = await fetch("/api/admin/users/roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: editing.id,
+        roleKeys: editingRoles,
+        isAdmin: Boolean(editing.isAdmin),
+      }),
+    });
+    const rolesJson = (await rolesResponse.json()) as {
+      roleKeys?: AdminRoleKey[];
+      error?: string;
+    };
+    if (!rolesResponse.ok) {
+      setError(rolesJson.error ?? "Unable to update user roles");
+      setIsSaving(false);
+      return;
+    }
+
+    setUsers((current) => current.map((user) => (user.id === editing.id ? editing : user)));
+    setRolesByUserId((current) => ({ ...current, [editing.id]: rolesJson.roleKeys ?? editingRoles }));
+    await refreshUser();
+    setMessage("User and roles updated.");
+    setIsSaving(false);
   }
 
   return (
@@ -69,7 +250,7 @@ export default function AdminUsersPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-serif text-3xl text-[#1a1a1a]">Partner Directory</h1>
-          <p className="text-sm text-[#666666]">Manage mock users and access levels.</p>
+          <p className="text-sm text-[#666666]">Manage users, admin access, and role assignments.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative w-56">
@@ -105,6 +286,17 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {message && (
+        <Card className="border-[#2b4d24]/40 bg-[#2b4d24]/5">
+          <CardContent className="p-3 text-sm text-[#2b4d24]">{message}</CardContent>
+        </Card>
+      )}
+      {error && (
+        <Card className="border-[#a36d4c]/40 bg-[#a36d4c]/10">
+          <CardContent className="p-3 text-sm text-[#a36d4c]">{error}</CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <div className="divide-y divide-[#e5e5e0]">
@@ -119,6 +311,15 @@ export default function AdminUsersPage() {
                       {user.firstName} {user.lastName}
                     </p>
                     <p className="text-xs text-[#999999]">{user.email}</p>
+                    {(rolesByUserId[user.id] ?? []).length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {(rolesByUserId[user.id] ?? []).map((role) => (
+                          <Badge key={role} variant="outline" className="text-[10px]">
+                            {roleLabel(role)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +334,7 @@ export default function AdminUsersPage() {
                   </Badge>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setEditing(user)}>
+                      <Button variant="outline" size="sm" onClick={() => openEditor(user)}>
                         Edit
                       </Button>
                     </DialogTrigger>
@@ -141,7 +342,7 @@ export default function AdminUsersPage() {
                       <DialogHeader>
                         <DialogTitle className="font-serif text-xl">Edit User</DialogTitle>
                       </DialogHeader>
-                      {editing && (
+                      {editing && editing.id === user.id && (
                         <div className="space-y-4">
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5">
@@ -201,11 +402,23 @@ export default function AdminUsersPage() {
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <Label>RDD Assignment (Synced)</Label>
-                            <Input value={editing.rddAssignment ?? ""} disabled />
-                            <p className="text-xs text-[#999999]">
-                              These fields are read-only and will sync from Blackbaud.
-                            </p>
+                            <Label>Admin Roles</Label>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {ADMIN_ROLES.map((role) => (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  onClick={() => toggleRole(role)}
+                                  className={`rounded-lg border px-3 py-2 text-left text-xs ${
+                                    editingRoles.includes(role)
+                                      ? "border-[#2b4d24] bg-[#2b4d24]/10 text-[#1a1a1a]"
+                                      : "border-[#d8d8d8] bg-white text-[#666666]"
+                                  }`}
+                                >
+                                  {roleLabel(role)}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                           <div className="flex items-center justify-between rounded-xl glass-inset p-3">
                             <div>
@@ -222,17 +435,15 @@ export default function AdminUsersPage() {
                             </Button>
                           </div>
                           <div className="flex gap-2">
-                            <Button className="bg-[#2b4d24] hover:bg-[#1a3a15]" onClick={handleSave}>
-                              Save Changes
-                            </Button>
                             <Button
-                              variant="outline"
-                              onClick={() => {
-                                setEditing(null);
-                                setUsers(getMockUsers());
-                              }}
+                              className="bg-[#2b4d24] hover:bg-[#1a3a15]"
+                              onClick={() => void handleSave()}
+                              disabled={isSaving}
                             >
-                              Cancel
+                              {isSaving ? "Saving..." : "Save Changes"}
+                            </Button>
+                            <Button variant="outline" onClick={() => setEditing(null)}>
+                              Close
                             </Button>
                           </div>
                         </div>
@@ -250,12 +461,14 @@ export default function AdminUsersPage() {
         <Button
           variant="outline"
           onClick={() => {
-            const seeded = getMockUsers();
-            setMockUsers(seeded);
-            setUsers(seeded);
+            if (isDevBypass) {
+              const seeded = getMockUsers();
+              setMockUsers(seeded);
+            }
+            void loadData();
           }}
         >
-          Restore Defaults
+          {isDevBypass ? "Restore Defaults" : "Reload Users"}
         </Button>
       </div>
     </div>

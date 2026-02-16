@@ -239,6 +239,97 @@ export interface CourseDiscussionReply {
   updatedAt: string;
 }
 
+export type CourseAssignmentSubmissionStatus = "draft" | "submitted" | "returned" | "graded";
+
+export interface CourseAssignment {
+  id: string;
+  courseId: string;
+  moduleId?: string;
+  title: string;
+  description: string;
+  instructions?: string;
+  dueAt?: string;
+  pointsPossible: number;
+  passingPercent: number;
+  isPublished: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseAssignmentSubmission {
+  id: string;
+  assignmentId: string;
+  userId: string;
+  submissionText?: string;
+  submissionUrl?: string;
+  status: CourseAssignmentSubmissionStatus;
+  scorePercent?: number;
+  graderUserId?: string;
+  feedback?: string;
+  submittedAt?: string;
+  gradedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LearningPath {
+  id: string;
+  title: string;
+  description?: string;
+  audience: Course["accessLevel"] | "all";
+  isActive: boolean;
+  estimatedHours?: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  coursesCount?: number;
+  completionPercent?: number;
+  isEnrolled?: boolean;
+  status?: UserLearningPathProgress["status"];
+}
+
+export interface LearningPathCourse {
+  id: string;
+  learningPathId: string;
+  courseId: string;
+  sortOrder: number;
+  required: boolean;
+  createdAt: string;
+}
+
+export interface UserLearningPathProgress {
+  id: string;
+  learningPathId: string;
+  userId: string;
+  completedCourses: number;
+  totalCourses: number;
+  completionPercent: number;
+  lastCalculatedAt: string;
+  enrolledAt: string;
+  completedAt?: string;
+  status: "enrolled" | "completed" | "paused";
+}
+
+export interface LmsIntervention {
+  id: string;
+  userId: string;
+  courseId?: string;
+  learningPathId?: string;
+  riskLevel: "medium" | "high";
+  riskScore: number;
+  reason: string;
+  assignedTo?: string;
+  status: "open" | "in_progress" | "resolved" | "dismissed";
+  actionPlan?: string;
+  lastContactedAt?: string;
+  dueAt?: string;
+  resolvedAt?: string;
+  metadata?: Record<string, string | number | boolean>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserRoleAssignment {
   id: string;
   userId: string;

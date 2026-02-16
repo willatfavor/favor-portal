@@ -714,6 +714,261 @@ export interface Database {
         };
         Relationships: [];
       };
+      course_assignments: {
+        Row: {
+          id: string;
+          course_id: string;
+          module_id: string | null;
+          title: string;
+          description: string;
+          instructions: string | null;
+          due_at: string | null;
+          points_possible: number;
+          passing_percent: number;
+          is_published: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          module_id?: string | null;
+          title: string;
+          description?: string;
+          instructions?: string | null;
+          due_at?: string | null;
+          points_possible?: number;
+          passing_percent?: number;
+          is_published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          module_id?: string | null;
+          title?: string;
+          description?: string;
+          instructions?: string | null;
+          due_at?: string | null;
+          points_possible?: number;
+          passing_percent?: number;
+          is_published?: boolean;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      course_assignment_submissions: {
+        Row: {
+          id: string;
+          assignment_id: string;
+          user_id: string;
+          submission_text: string | null;
+          submission_url: string | null;
+          status: string;
+          score_percent: number | null;
+          grader_user_id: string | null;
+          feedback: string | null;
+          submitted_at: string | null;
+          graded_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          assignment_id: string;
+          user_id: string;
+          submission_text?: string | null;
+          submission_url?: string | null;
+          status?: string;
+          score_percent?: number | null;
+          grader_user_id?: string | null;
+          feedback?: string | null;
+          submitted_at?: string | null;
+          graded_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          assignment_id?: string;
+          user_id?: string;
+          submission_text?: string | null;
+          submission_url?: string | null;
+          status?: string;
+          score_percent?: number | null;
+          grader_user_id?: string | null;
+          feedback?: string | null;
+          submitted_at?: string | null;
+          graded_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_paths: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          audience: string;
+          is_active: boolean;
+          estimated_hours: number | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          audience?: string;
+          is_active?: boolean;
+          estimated_hours?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          audience?: string;
+          is_active?: boolean;
+          estimated_hours?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_path_courses: {
+        Row: {
+          id: string;
+          learning_path_id: string;
+          course_id: string;
+          sort_order: number;
+          required: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          learning_path_id: string;
+          course_id: string;
+          sort_order?: number;
+          required?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          learning_path_id?: string;
+          course_id?: string;
+          sort_order?: number;
+          required?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      user_learning_path_progress: {
+        Row: {
+          id: string;
+          learning_path_id: string;
+          user_id: string;
+          completed_courses: number;
+          total_courses: number;
+          completion_percent: number;
+          last_calculated_at: string;
+          enrolled_at: string;
+          completed_at: string | null;
+          status: string;
+        };
+        Insert: {
+          id?: string;
+          learning_path_id: string;
+          user_id: string;
+          completed_courses?: number;
+          total_courses?: number;
+          completion_percent?: number;
+          last_calculated_at?: string;
+          enrolled_at?: string;
+          completed_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          id?: string;
+          learning_path_id?: string;
+          user_id?: string;
+          completed_courses?: number;
+          total_courses?: number;
+          completion_percent?: number;
+          last_calculated_at?: string;
+          enrolled_at?: string;
+          completed_at?: string | null;
+          status?: string;
+        };
+        Relationships: [];
+      };
+      lms_interventions: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string | null;
+          learning_path_id: string | null;
+          risk_level: string;
+          risk_score: number;
+          reason: string;
+          assigned_to: string | null;
+          status: string;
+          action_plan: string | null;
+          last_contacted_at: string | null;
+          due_at: string | null;
+          resolved_at: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          course_id?: string | null;
+          learning_path_id?: string | null;
+          risk_level: string;
+          risk_score: number;
+          reason: string;
+          assigned_to?: string | null;
+          status?: string;
+          action_plan?: string | null;
+          last_contacted_at?: string | null;
+          due_at?: string | null;
+          resolved_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          course_id?: string | null;
+          learning_path_id?: string | null;
+          risk_level?: string;
+          risk_score?: number;
+          reason?: string;
+          assigned_to?: string | null;
+          status?: string;
+          action_plan?: string | null;
+          last_contacted_at?: string | null;
+          due_at?: string | null;
+          resolved_at?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       foundation_grants: {
         Row: {
           id: string;

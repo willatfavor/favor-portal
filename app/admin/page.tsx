@@ -380,6 +380,12 @@ export default function AdminOverviewPage() {
               <Link href="/admin/courses">Create or edit courses</Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/courses/assignments">Review assignments and grading</Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/courses/interventions">Manage learner interventions</Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-start" asChild>
               <Link href="/admin/content">Publish partner updates</Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>

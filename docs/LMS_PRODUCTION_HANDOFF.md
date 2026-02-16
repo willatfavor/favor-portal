@@ -4,6 +4,7 @@
 - Secure LMS schema extensions for production in `database/migrations/002_lms_production_upgrade.sql`.
 - Advanced LMS feature schema in `database/migrations/003_lms_advanced_features.sql`.
 - LMS community + cohorts schema in `database/migrations/004_lms_community_and_cohorts.sql`.
+- LMS assignments/learning paths/interventions schema in `database/migrations/005_lms_assignments_paths_interventions.sql`.
 - Role-aware LMS access policies in Postgres RLS (course/module reads are no longer globally readable by any authenticated user).
 - `users.is_admin` support for admin-gated LMS authoring.
 - Granular RBAC role model via `user_roles` and permission-aware admin UX.
@@ -27,7 +28,24 @@
   - `GET/POST /api/lms/discussions/threads`
   - `PATCH /api/lms/discussions/threads/[threadId]`
   - `GET/POST /api/lms/discussions/threads/[threadId]/replies`
+- LMS assignment APIs:
+  - `GET/POST /api/lms/assignments`
+  - `GET/POST /api/lms/assignments/[assignmentId]/submissions`
+  - `PATCH /api/lms/assignments/submissions/[submissionId]`
+- LMS learning path APIs:
+  - `GET/POST /api/lms/learning-paths`
+  - `GET/POST/DELETE /api/lms/learning-paths/[pathId]/courses`
+  - `POST /api/lms/learning-paths/[pathId]/enroll`
+- LMS intervention API:
+  - `GET/POST /api/admin/lms/interventions`
+- Admin user role API:
+  - `GET/POST /api/admin/users/roles`
 - Admin course/module management page (`/admin/courses`) uses Supabase data in live mode and keeps dev bypass fallback.
+- Dedicated LMS operations pages:
+  - `/admin/courses/assignments`
+  - `/admin/courses/paths`
+  - `/admin/courses/interventions`
+- Admin user management page now supports live role assignment against `user_roles`.
 - Course detail page supports:
   - sequential unlock controlled by `courses.enforce_sequential`
   - persisted notes in live mode
@@ -36,8 +54,10 @@
   - certificate verification URL
   - cohort participation per course
   - discussion threads and instructor-pinned replies
+  - assignment submissions with graded feedback visibility
   - Cloudflare Stream embed support when a stream ID + public subdomain are configured
   - downloadable completion summary + notes exports
+- Course catalog page supports learner-facing learning paths/tracks with enrollment + progress.
 
 ## Required Deployment Steps
 1. Apply DB migrations in order:
@@ -45,6 +65,7 @@
    - `database/migrations/002_lms_production_upgrade.sql`
    - `database/migrations/003_lms_advanced_features.sql`
    - `database/migrations/004_lms_community_and_cohorts.sql`
+   - `database/migrations/005_lms_assignments_paths_interventions.sql`
 2. Refresh generated DB types if your workflow regenerates `types/supabase.ts`.
 3. Set env vars:
    - `NEXT_PUBLIC_CLOUDFLARE_STREAM_SUBDOMAIN` (client embed)
@@ -64,8 +85,8 @@
 - Course progress and notes are safe to keep local to Supabase while SKY remains the source of truth for donor/constituent data.
 - LMS certificates, quiz attempts, and module analytics are intentionally kept in Supabase and do not require SKY ownership.
 - LMS cohorts, memberships, and community threads/replies are intentionally kept in Supabase and do not require SKY ownership.
+- LMS assignments/submissions, learning paths, and interventions are intentionally kept in Supabase and do not require SKY ownership.
 
 ## Follow-Ups (Optional Enhancements)
 - Add certificate cryptographic signing/QR verification if external auditors require tamper evidence.
-- Add role-assignment UI in `/admin/users` against `user_roles` for live admin governance.
 - Add automated scheduled publish/unpublish jobs if background enforcement beyond query-time checks is required.

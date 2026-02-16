@@ -13,6 +13,7 @@ import Link from "next/link";
 import { SectionHeader } from "@/components/portal/section-header";
 import { EmptyState } from "@/components/portal/empty-state";
 import { canAccessCourse } from "@/lib/constants";
+import { LearningPathsSection } from "@/components/courses/learning-paths-section";
 
 export default function CoursesPage() {
   const { user } = useAuth();
@@ -123,6 +124,13 @@ export default function CoursesPage() {
       </div>
 
       {/* Course grid */}
+      <LearningPathsSection
+        userId={user?.id}
+        courses={accessibleCourses}
+        modules={modules}
+        progress={progress}
+      />
+
       <section>
         <SectionHeader
           title="All Courses"

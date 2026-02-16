@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/portal/empty-state";
+import { CourseAssignmentsPanel } from "@/components/courses/course-assignments-panel";
 import { createClient } from "@/lib/supabase/client";
 import { getStreamUrl } from "@/lib/cloudflare/client";
 import { hasAdminPermission } from "@/lib/admin/roles";
@@ -1437,6 +1438,14 @@ export default function CourseDetailPage() {
               {certificateError && <p className="text-xs text-[#a36d4c]">{certificateError}</p>}
             </CardContent>
           </Card>
+
+          {courseId && (
+            <CourseAssignmentsPanel
+              courseId={courseId}
+              userId={user?.id}
+              canManageLms={canManageLms}
+            />
+          )}
 
           <Card className="glass-subtle border-0">
             <CardContent className="p-5 space-y-4">

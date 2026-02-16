@@ -19,6 +19,12 @@ import type {
   CourseCohortMember,
   CourseDiscussionThread,
   CourseDiscussionReply,
+  CourseAssignment,
+  CourseAssignmentSubmission,
+  LearningPath,
+  LearningPathCourse,
+  UserLearningPathProgress,
+  LmsIntervention,
 } from '@/types';
 
 export const MOCK_USERS: User[] = [
@@ -793,6 +799,185 @@ export const MOCK_DISCUSSION_REPLIES: CourseDiscussionReply[] = [
     isInstructorReply: true,
     createdAt: '2026-02-09T11:00:00Z',
     updatedAt: '2026-02-09T11:00:00Z',
+  },
+];
+
+export const MOCK_ASSIGNMENTS: CourseAssignment[] = [
+  {
+    id: 'assignment-africa-001',
+    courseId: 'course-africa',
+    moduleId: 'course-africa-module-2',
+    title: 'Education Program Reflection',
+    description: 'Summarize how discipleship and education reinforce each other in your context.',
+    instructions: 'Write 300-500 words and include one practical next step.',
+    dueAt: '2026-03-12T23:59:59Z',
+    pointsPossible: 100,
+    passingPercent: 70,
+    isPublished: true,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-10T12:00:00Z',
+    updatedAt: '2026-02-10T12:00:00Z',
+  },
+  {
+    id: 'assignment-vision-001',
+    courseId: 'course-vision',
+    moduleId: 'course-vision-module-3',
+    title: 'Discipleship Pathway Action Plan',
+    description: 'Draft a 30-day action plan based on the module reading.',
+    instructions: 'Include milestones, owners, and one measurable outcome.',
+    dueAt: '2026-03-18T23:59:59Z',
+    pointsPossible: 100,
+    passingPercent: 75,
+    isPublished: true,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-11T12:00:00Z',
+    updatedAt: '2026-02-11T12:00:00Z',
+  },
+  {
+    id: 'assignment-ambassador-001',
+    courseId: 'course-ambassador',
+    moduleId: 'course-ambassador-module-4',
+    title: 'Campaign Execution Brief',
+    description: 'Build a concise campaign brief for your next local activation.',
+    instructions: 'Attach timeline, target audience, and fundraising target.',
+    dueAt: '2026-03-22T23:59:59Z',
+    pointsPossible: 100,
+    passingPercent: 70,
+    isPublished: false,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-12T12:00:00Z',
+    updatedAt: '2026-02-12T12:00:00Z',
+  },
+];
+
+export const MOCK_ASSIGNMENT_SUBMISSIONS: CourseAssignmentSubmission[] = [
+  {
+    id: 'submission-africa-001',
+    assignmentId: 'assignment-africa-001',
+    userId: 'user-001',
+    submissionText: 'We need to pair weekly discipleship circles with school attendance follow-up.',
+    submissionUrl: 'https://example.org/submissions/emma-africa-reflection',
+    status: 'graded',
+    scorePercent: 92,
+    graderUserId: 'admin-001',
+    feedback: 'Strong application with clear next steps.',
+    submittedAt: '2026-02-20T18:45:00Z',
+    gradedAt: '2026-02-21T14:00:00Z',
+    createdAt: '2026-02-20T18:45:00Z',
+    updatedAt: '2026-02-21T14:00:00Z',
+  },
+  {
+    id: 'submission-vision-001',
+    assignmentId: 'assignment-vision-001',
+    userId: 'user-003',
+    submissionText: 'Our first milestone is training two facilitators and launching weekly mentoring.',
+    status: 'submitted',
+    submittedAt: '2026-02-24T16:10:00Z',
+    createdAt: '2026-02-24T16:10:00Z',
+    updatedAt: '2026-02-24T16:10:00Z',
+  },
+];
+
+export const MOCK_LEARNING_PATHS: LearningPath[] = [
+  {
+    id: 'path-partner-foundations',
+    title: 'Partner Foundations Track',
+    description: 'Core onboarding pathway for new Favor partners.',
+    audience: 'partner',
+    isActive: true,
+    estimatedHours: 8,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-08T10:00:00Z',
+    updatedAt: '2026-02-08T10:00:00Z',
+  },
+  {
+    id: 'path-ambassador-cert',
+    title: 'Ambassador Certification Track',
+    description: 'Structured learning path to certify active ambassadors.',
+    audience: 'ambassador',
+    isActive: true,
+    estimatedHours: 10,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-09T10:00:00Z',
+    updatedAt: '2026-02-09T10:00:00Z',
+  },
+];
+
+export const MOCK_LEARNING_PATH_COURSES: LearningPathCourse[] = [
+  {
+    id: 'path-course-001',
+    learningPathId: 'path-partner-foundations',
+    courseId: 'course-africa',
+    sortOrder: 1,
+    required: true,
+    createdAt: '2026-02-08T10:00:00Z',
+  },
+  {
+    id: 'path-course-002',
+    learningPathId: 'path-partner-foundations',
+    courseId: 'course-vision',
+    sortOrder: 2,
+    required: true,
+    createdAt: '2026-02-08T10:00:00Z',
+  },
+  {
+    id: 'path-course-003',
+    learningPathId: 'path-ambassador-cert',
+    courseId: 'course-ambassador',
+    sortOrder: 1,
+    required: true,
+    createdAt: '2026-02-09T10:00:00Z',
+  },
+  {
+    id: 'path-course-004',
+    learningPathId: 'path-ambassador-cert',
+    courseId: 'course-us',
+    sortOrder: 2,
+    required: true,
+    createdAt: '2026-02-09T10:00:00Z',
+  },
+];
+
+export const MOCK_USER_LEARNING_PATH_PROGRESS: UserLearningPathProgress[] = [
+  {
+    id: 'path-progress-001',
+    learningPathId: 'path-partner-foundations',
+    userId: 'user-001',
+    completedCourses: 0,
+    totalCourses: 2,
+    completionPercent: 0,
+    lastCalculatedAt: '2026-02-24T18:45:00Z',
+    enrolledAt: '2026-02-14T09:00:00Z',
+    status: 'enrolled',
+  },
+  {
+    id: 'path-progress-002',
+    learningPathId: 'path-ambassador-cert',
+    userId: 'user-006',
+    completedCourses: 0,
+    totalCourses: 2,
+    completionPercent: 0,
+    lastCalculatedAt: '2026-02-24T18:45:00Z',
+    enrolledAt: '2026-02-15T09:00:00Z',
+    status: 'enrolled',
+  },
+];
+
+export const MOCK_LMS_INTERVENTIONS: LmsIntervention[] = [
+  {
+    id: 'intervention-001',
+    userId: 'user-003',
+    courseId: 'course-vision',
+    riskLevel: 'medium',
+    riskScore: 58,
+    reason: 'Learner has not completed modules recently and has one pending assignment.',
+    assignedTo: 'admin-001',
+    status: 'open',
+    actionPlan: 'Send check-in email and offer office hours support.',
+    dueAt: '2026-03-01T17:00:00Z',
+    metadata: { source: 'seed', overdueAssignments: 1 },
+    createdAt: '2026-02-25T12:00:00Z',
+    updatedAt: '2026-02-25T12:00:00Z',
   },
 ];
 
