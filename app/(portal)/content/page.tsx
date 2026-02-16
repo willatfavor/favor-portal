@@ -21,10 +21,8 @@ import {
   BookOpen,
   Clock,
   Star,
-  TrendingUp,
   LayoutGrid,
   List,
-  ArrowUpDown,
   Bookmark,
   Eye,
 } from "lucide-react";
@@ -173,7 +171,7 @@ function ContentPageContent() {
   );
 
   const filtered = useMemo(() => {
-    let list = showBookmarks
+    const list = showBookmarks
       ? allAccessible.filter((item) => bookmarks.includes(item.id))
       : allAccessible;
 
