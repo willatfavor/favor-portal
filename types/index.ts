@@ -185,6 +185,60 @@ export interface CourseModuleEvent {
   metadata?: Record<string, string | number | boolean>;
 }
 
+export type CourseCohortRole = 'learner' | 'mentor' | 'instructor';
+
+export interface CourseCohort {
+  id: string;
+  courseId: string;
+  name: string;
+  description?: string;
+  startsAt?: string;
+  endsAt?: string;
+  isActive: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  membersCount?: number;
+  isMember?: boolean;
+  membershipRole?: CourseCohortRole;
+}
+
+export interface CourseCohortMember {
+  id: string;
+  cohortId: string;
+  userId: string;
+  membershipRole: CourseCohortRole;
+  joinedAt: string;
+}
+
+export interface CourseDiscussionThread {
+  id: string;
+  courseId: string;
+  cohortId?: string;
+  moduleId?: string;
+  authorUserId: string;
+  authorName?: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  locked: boolean;
+  replyCount: number;
+  lastActivityAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseDiscussionReply {
+  id: string;
+  threadId: string;
+  authorUserId: string;
+  authorName?: string;
+  body: string;
+  isInstructorReply: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserRoleAssignment {
   id: string;
   userId: string;

@@ -15,6 +15,10 @@ import type {
   UserRoleAssignment,
   UserQuizAttempt,
   CourseModuleEvent,
+  CourseCohort,
+  CourseCohortMember,
+  CourseDiscussionThread,
+  CourseDiscussionReply,
 } from '@/types';
 
 export const MOCK_USERS: User[] = [
@@ -654,6 +658,141 @@ export const MOCK_MODULE_EVENTS: CourseModuleEvent[] = [
     watchTimeSeconds: 760,
     createdAt: '2026-01-21T12:00:00Z',
     metadata: { source: 'seed' },
+  },
+];
+
+export const MOCK_COHORTS: CourseCohort[] = [
+  {
+    id: 'cohort-africa-spring',
+    courseId: 'course-africa',
+    name: 'Spring 2026 Cohort',
+    description: 'Weekly cohort for Africa Programs Overview learners.',
+    startsAt: '2026-03-01T00:00:00Z',
+    endsAt: '2026-04-30T23:59:59Z',
+    isActive: true,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-01T10:00:00Z',
+    updatedAt: '2026-02-01T10:00:00Z',
+    membersCount: 3,
+  },
+  {
+    id: 'cohort-vision-facilitated',
+    courseId: 'course-vision',
+    name: 'Facilitated Track A',
+    description: 'Instructor-led discussions and weekly reflection prompts.',
+    startsAt: '2026-03-10T00:00:00Z',
+    endsAt: '2026-05-01T23:59:59Z',
+    isActive: true,
+    createdBy: 'admin-001',
+    createdAt: '2026-02-05T10:00:00Z',
+    updatedAt: '2026-02-05T10:00:00Z',
+    membersCount: 2,
+  },
+];
+
+export const MOCK_COHORT_MEMBERS: CourseCohortMember[] = [
+  {
+    id: 'cohort-member-001',
+    cohortId: 'cohort-africa-spring',
+    userId: 'user-001',
+    membershipRole: 'learner',
+    joinedAt: '2026-02-02T12:00:00Z',
+  },
+  {
+    id: 'cohort-member-002',
+    cohortId: 'cohort-africa-spring',
+    userId: 'user-006',
+    membershipRole: 'learner',
+    joinedAt: '2026-02-02T13:00:00Z',
+  },
+  {
+    id: 'cohort-member-003',
+    cohortId: 'cohort-africa-spring',
+    userId: 'admin-001',
+    membershipRole: 'instructor',
+    joinedAt: '2026-02-01T10:00:00Z',
+  },
+  {
+    id: 'cohort-member-004',
+    cohortId: 'cohort-vision-facilitated',
+    userId: 'user-003',
+    membershipRole: 'learner',
+    joinedAt: '2026-02-06T11:00:00Z',
+  },
+  {
+    id: 'cohort-member-005',
+    cohortId: 'cohort-vision-facilitated',
+    userId: 'admin-001',
+    membershipRole: 'instructor',
+    joinedAt: '2026-02-05T10:00:00Z',
+  },
+];
+
+export const MOCK_DISCUSSION_THREADS: CourseDiscussionThread[] = [
+  {
+    id: 'thread-africa-001',
+    courseId: 'course-africa',
+    cohortId: 'cohort-africa-spring',
+    moduleId: 'course-africa-module-1',
+    authorUserId: 'admin-001',
+    authorName: 'Avery Admin',
+    title: 'Welcome thread: introduce yourself',
+    body: 'Share where you are serving and one thing you hope to learn in this course.',
+    pinned: true,
+    locked: false,
+    replyCount: 2,
+    lastActivityAt: '2026-02-08T15:00:00Z',
+    createdAt: '2026-02-07T12:00:00Z',
+    updatedAt: '2026-02-08T15:00:00Z',
+  },
+  {
+    id: 'thread-africa-002',
+    courseId: 'course-africa',
+    cohortId: 'cohort-africa-spring',
+    moduleId: 'course-africa-module-2',
+    authorUserId: 'user-001',
+    authorName: 'Emma Carter',
+    title: 'Question about module 2 case study',
+    body: 'What indicators do we use to evaluate early outcomes in education projects?',
+    pinned: false,
+    locked: false,
+    replyCount: 1,
+    lastActivityAt: '2026-02-09T11:00:00Z',
+    createdAt: '2026-02-09T10:20:00Z',
+    updatedAt: '2026-02-09T11:00:00Z',
+  },
+];
+
+export const MOCK_DISCUSSION_REPLIES: CourseDiscussionReply[] = [
+  {
+    id: 'thread-reply-001',
+    threadId: 'thread-africa-001',
+    authorUserId: 'user-001',
+    authorName: 'Emma Carter',
+    body: 'I am serving in Atlanta and want to improve how I communicate program impact.',
+    isInstructorReply: false,
+    createdAt: '2026-02-08T13:00:00Z',
+    updatedAt: '2026-02-08T13:00:00Z',
+  },
+  {
+    id: 'thread-reply-002',
+    threadId: 'thread-africa-001',
+    authorUserId: 'admin-001',
+    authorName: 'Avery Admin',
+    body: 'Great to have you here. We will cover impact storytelling in module 4.',
+    isInstructorReply: true,
+    createdAt: '2026-02-08T15:00:00Z',
+    updatedAt: '2026-02-08T15:00:00Z',
+  },
+  {
+    id: 'thread-reply-003',
+    threadId: 'thread-africa-002',
+    authorUserId: 'admin-001',
+    authorName: 'Avery Admin',
+    body: 'We use attendance consistency, mentor retention, and literacy progression as early indicators.',
+    isInstructorReply: true,
+    createdAt: '2026-02-09T11:00:00Z',
+    updatedAt: '2026-02-09T11:00:00Z',
   },
 ];
 
