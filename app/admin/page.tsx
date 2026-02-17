@@ -369,6 +369,9 @@ export default function AdminOverviewPage() {
               <Link href="/admin/content">Publish partner updates</Link>
             </Button>
             <Button variant="outline" className="w-full justify-start" asChild>
+              <Link href="/admin/dashboard">Customize dashboard experience</Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-start" asChild>
               <Link href="/admin/support">Review support tickets</Link>
             </Button>
             <div className="text-xs text-[#999999]">

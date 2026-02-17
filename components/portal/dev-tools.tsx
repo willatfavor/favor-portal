@@ -44,14 +44,11 @@ export function DevTools() {
   }, [isDev]);
 
   useEffect(() => {
-    if (!isDev) return;
-    const params = new URLSearchParams(window.location.search);
-    const shouldEnable =
-      params.has("devtools") || localStorage.getItem("favor_devtools") === "true";
-    if (params.has("devtools")) {
-      localStorage.setItem("favor_devtools", "true");
+    if (!isDev) {
+      setEnabled(false);
+      return;
     }
-    setEnabled(shouldEnable);
+    setEnabled(true);
   }, [isDev]);
 
   const activeUser = user;
@@ -69,11 +66,12 @@ export function DevTools() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 text-[#8b957b] hover:text-[#2b4d24] glass-transition"
-          aria-label="Dev tools"
+          variant="outline"
+          size="sm"
+          className="h-9 gap-1.5 text-[#8b957b] hover:text-[#2b4d24] glass-transition"
+          aria-label="QA tools"
         >
+          <span className="text-[10px] font-semibold uppercase tracking-wide">QA</span>
           <Settings className="h-4.5 w-4.5" />
         </Button>
       </DialogTrigger>

@@ -67,8 +67,12 @@ function sanitizeFilename(value: string) {
     .slice(0, 80);
 }
 
-function downloadTextFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+function downloadFile(
+  filename: string,
+  content: string,
+  mimeType = "text/plain;charset=utf-8"
+) {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -1078,7 +1082,7 @@ export default function CourseDetailPage() {
   </div>
 </body>
 </html>`;
-    downloadTextFile(`${sanitizeFilename(course.title)}-certificate.html`, html);
+    downloadFile(`${sanitizeFilename(course.title)}-certificate.html`, html, "text/html;charset=utf-8");
   }
 
   function downloadActiveNote() {
@@ -1092,27 +1096,58 @@ export default function CourseDetailPage() {
       "",
       noteValue.trim(),
     ].join("\n");
-    downloadTextFile(`${safeCourseTitle}-${safeModuleTitle}-notes.txt`, body);
+    downloadFile(`${safeCourseTitle}-${safeModuleTitle}-notes.txt`, body);
   }
 
   function downloadCompletionSummary() {
     if (!isCourseComplete || !course) return;
-    const moduleLines = courseModules.map((module, index) => {
+    const learnerName = user ? `${user.firstName} ${user.lastName}` : "Unknown User";
+    const moduleRows = courseModules.map((module, index) => {
       const moduleProgress = progressMap.get(module.id);
       const state = moduleProgress?.completed ? "Completed" : "Incomplete";
-      return `${index + 1}. ${module.title} - ${state}`;
+      return `<tr><td>${index + 1}</td><td>${module.title}</td><td>${state}</td></tr>`;
     });
-    const body = [
-      "Favor Course Completion Summary",
-      `Learner: ${user ? `${user.firstName} ${user.lastName}` : "Unknown User"}`,
-      `Email: ${user?.email ?? "Unknown"}`,
-      `Course: ${course.title}`,
-      `Completed On: ${new Date().toLocaleDateString()}`,
-      `Completion Rate: ${completionRate}%`,
-      "",
-      ...moduleLines,
-    ].join("\n");
-    downloadTextFile(`${sanitizeFilename(course.title)}-completion-summary.txt`, body);
+
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Course Completion Summary</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; color: #1a1a1a; }
+    h1 { margin: 0 0 16px; font-size: 28px; }
+    .meta { margin-bottom: 20px; line-height: 1.8; }
+    .label { color: #666; display: inline-block; min-width: 130px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #d9ddd6; padding: 8px; text-align: left; font-size: 14px; }
+    th { background: #f5f7f3; }
+  </style>
+</head>
+<body>
+  <h1>Favor Course Completion Summary</h1>
+  <div class="meta">
+    <div><span class="label">Learner:</span> ${learnerName}</div>
+    <div><span class="label">Email:</span> ${user?.email ?? "Unknown"}</div>
+    <div><span class="label">Course:</span> ${course.title}</div>
+    <div><span class="label">Completed On:</span> ${new Date().toLocaleDateString()}</div>
+    <div><span class="label">Completion Rate:</span> ${completionRate}%</div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Module</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      ${moduleRows.join("")}
+    </tbody>
+  </table>
+</body>
+</html>`;
+    downloadFile(
+      `${sanitizeFilename(course.title)}-completion-summary.html`,
+      html,
+      "text/html;charset=utf-8"
+    );
   }
 
   function getCompletionButtonText() {
@@ -1519,6 +1554,11 @@ export default function CourseDetailPage() {
                     Create Cohort
                   </Button>
                 </div>
+              )}
+              {!canManageLms && (
+                <p className="text-xs text-[#999999]">
+                  Cohort creation is managed by LMS admins. You can still join available cohorts.
+                </p>
               )}
 
               <div className="space-y-2 rounded-xl border border-[#c5ccc2]/40 bg-white/70 p-3">

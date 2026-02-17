@@ -47,6 +47,7 @@ import {
   MOCK_PROFILE_DETAILS,
   MOCK_GIVING_GOALS,
 } from './mock-data';
+import type { DashboardRoleExperienceOverride } from "@/lib/dashboard/experience-overrides";
 
 const STORAGE_KEYS = {
   users: 'favor_mock_users',
@@ -73,6 +74,7 @@ const STORAGE_KEYS = {
   discussionReplies: 'favor_mock_discussion_replies',
   profileDetails: 'favor_mock_profile_details',
   givingGoals: 'favor_mock_giving_goals',
+  dashboardExperience: 'favor_mock_dashboard_experience',
   activeUser: 'favor_mock_active_user',
 };
 
@@ -143,6 +145,7 @@ export function initMockStore(): void {
   seed(STORAGE_KEYS.discussionReplies, MOCK_DISCUSSION_REPLIES);
   seed(STORAGE_KEYS.profileDetails, MOCK_PROFILE_DETAILS);
   seed(STORAGE_KEYS.givingGoals, MOCK_GIVING_GOALS);
+  seed(STORAGE_KEYS.dashboardExperience, []);
   const defaultUser = MOCK_USERS.find((u) => !u.isAdmin) ?? MOCK_USERS[0];
   seed(STORAGE_KEYS.activeUser, defaultUser.id);
 }
@@ -702,4 +705,26 @@ export function recordActivity(event: ActivityEvent): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('favor:activity'));
   }
+}
+
+export function getMockDashboardExperienceOverrides(): DashboardRoleExperienceOverride[] {
+  initMockStore();
+  return getItem(STORAGE_KEYS.dashboardExperience, []);
+}
+
+export function setMockDashboardExperienceOverrides(
+  overrides: DashboardRoleExperienceOverride[]
+): void {
+  setItem(STORAGE_KEYS.dashboardExperience, overrides);
+}
+
+export function upsertMockDashboardExperienceOverride(
+  override: DashboardRoleExperienceOverride
+): DashboardRoleExperienceOverride[] {
+  const current = getMockDashboardExperienceOverrides();
+  const next = current.some((entry) => entry.roleKey === override.roleKey)
+    ? current.map((entry) => (entry.roleKey === override.roleKey ? override : entry))
+    : [...current, override];
+  setMockDashboardExperienceOverrides(next);
+  return next;
 }

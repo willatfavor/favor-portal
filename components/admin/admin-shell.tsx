@@ -13,6 +13,7 @@ import {
   Users,
   GraduationCap,
   FileText,
+  LayoutDashboard,
   Mail,
   LifeBuoy,
   ArrowLeft,
@@ -24,6 +25,12 @@ const ADMIN_NAV = [
   { name: "Overview", href: "/admin", icon: Home, permission: "admin:access" as const },
   { name: "Users", href: "/admin/users", icon: Users, permission: "users:manage" as const },
   { name: "LMS", href: "/admin/courses", icon: GraduationCap, permission: "lms:manage" as const },
+  {
+    name: "Dashboard",
+    href: "/admin/dashboard",
+    icon: LayoutDashboard,
+    permission: "content:manage" as const,
+  },
   { name: "Content", href: "/admin/content", icon: FileText, permission: "content:manage" as const },
   {
     name: "Comms",

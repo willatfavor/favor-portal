@@ -525,8 +525,14 @@ function ContentPageContent() {
                   <p className="text-sm text-[#999999] line-clamp-2">
                     {item.excerpt}
                   </p>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Request Access
+                  <Button variant="outline" size="sm" className="w-full" asChild>
+                    <Link
+                      href={`/support?topic=content-access&contentTitle=${encodeURIComponent(
+                        item.title
+                      )}`}
+                    >
+                      Request Access
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useGiving } from "@/hooks/use-giving";
 import { useCourses } from "@/hooks/use-courses";
@@ -25,17 +25,24 @@ import { ModuleTile } from "@/components/portal/module-tile";
 import { NewsCarousel } from "@/components/portal/news-carousel";
 import { EmptyState } from "@/components/portal/empty-state";
 import { GiveNowDialog } from "@/components/portal/give-now-dialog";
-import { ContactSupportDialog } from "@/components/portal/contact-support-dialog";
 import { DashboardSkeleton } from "@/components/portal/dashboard/dashboard-skeleton";
 import { NEWS_FEED, MODULE_TILES } from "@/lib/portal-mock-data";
 import { canAccessCourse, canAccessContent, getGivingTier } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { buildRoleExperience } from "@/lib/dashboard/role-experience";
+import {
+  applyRoleExperienceOverride,
+  sanitizeDashboardRoleOverrides,
+  type DashboardRoleExperienceOverride,
+} from "@/lib/dashboard/experience-overrides";
 import type { ConstituentType } from "@/types";
 
 export default function DashboardPage() {
   const { user, isLoading: isUserLoading } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [experienceOverrides, setExperienceOverrides] = useState<DashboardRoleExperienceOverride[]>(
+    []
+  );
   const { totalGiven, ytdGiven, gifts, isLoading: isGivingLoading } = useGiving(user?.id, refreshKey);
   const { courses, modules, progress, isLoading: isCoursesLoading } = useCourses(user?.id);
   const { items: contentItems, isLoading: isContentLoading } = useContent();
@@ -45,6 +52,27 @@ export default function DashboardPage() {
 
   const userType = (user?.constituentType ?? "individual") as ConstituentType;
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadExperienceOverrides() {
+      try {
+        const response = await fetch("/api/dashboard/experience", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!isMounted) return;
+        setExperienceOverrides(sanitizeDashboardRoleOverrides(payload.overrides));
+      } catch {
+        if (isMounted) setExperienceOverrides([]);
+      }
+    }
+
+    void loadExperienceOverrides();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const accessibleCourses = courses.filter((course) =>
     canAccessCourse(course.accessLevel, userType) &&
     course.status !== "draft" &&
@@ -52,12 +80,6 @@ export default function DashboardPage() {
   );
   const accessibleCourseIds = new Set(accessibleCourses.map((course) => course.id));
   const accessibleModules = modules.filter((module) => accessibleCourseIds.has(module.courseId));
-  const completedModules = progress.filter(
-    (p) => p.completed && accessibleModules.some((m) => m.id === p.moduleId)
-  ).length;
-  const totalModules = accessibleModules.length;
-  const progressPercentage =
-    totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
   const tier = getGivingTier((user?.lifetimeGivingTotal ?? 0) + totalGiven);
 
@@ -66,7 +88,7 @@ export default function DashboardPage() {
   );
   const baseRecommended = accessibleContent.slice(0, 3);
 
-  const roleExperience = buildRoleExperience({
+  const baseRoleExperience = buildRoleExperience({
     userType,
     gifts,
     grants,
@@ -74,6 +96,8 @@ export default function DashboardPage() {
     recommendedCourseTitle: accessibleCourses[0]?.title,
     rddAssignment: user?.rddAssignment,
   });
+  const activeRoleOverride = experienceOverrides.find((entry) => entry.roleKey === userType);
+  const roleExperience = applyRoleExperienceOverride(baseRoleExperience, activeRoleOverride);
 
   const roleHighlights = roleExperience.highlights;
   const roleActions = roleExperience.actions;
@@ -94,6 +118,23 @@ export default function DashboardPage() {
     );
     return { courseModules, courseProgress };
   };
+
+  const courseProgressSnapshot = accessibleCourses.map((course) => {
+    const { courseModules, courseProgress } = getCourseProgress(course.id);
+    const completedCount = courseProgress.filter((p) => p.completed).length;
+    return {
+      courseId: course.id,
+      totalCount: courseModules.length,
+      completedCount,
+    };
+  });
+
+  const inProgressCourseCount = courseProgressSnapshot.filter(
+    (entry) => entry.completedCount > 0 && entry.completedCount < Math.max(entry.totalCount, 1)
+  ).length;
+  const completedCourseCount = courseProgressSnapshot.filter(
+    (entry) => entry.totalCount > 0 && entry.completedCount === entry.totalCount
+  ).length;
 
   const inProgressCourses = accessibleCourses
     .map((course) => {
@@ -193,8 +234,8 @@ export default function DashboardPage() {
               icon: Calendar,
             },
             {
-              label: "Course Progress",
-              value: `${progressPercentage}%`,
+              label: "Courses Completed",
+              value: `${completedCourseCount}/${accessibleCourses.length}`,
               icon: GraduationCap,
             },
           ].map((stat) => (
@@ -304,39 +345,25 @@ export default function DashboardPage() {
       <section className="glass-enter glass-enter-delay-5">
         <SectionHeader title="Your Portal" subtitle="Explore your partnership tools and resources" />
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {moduleTiles.map((tile) =>
-            tile.id === "support" ? (
-              <ContactSupportDialog
-                key={tile.id}
-                trigger={
-                  <ModuleTile
-                    title={tile.title}
-                    description={tile.description}
-                    icon={tile.icon}
-                    href="#"
-                    accent={tile.accent}
-                    onClick={() => {}}
-                  />
-                }
-              />
-            ) : (
-              <ModuleTile
-                key={tile.id}
-                title={tile.title}
-                description={tile.description}
-                icon={tile.icon}
-                href={tile.href}
-                accent={tile.accent}
-                badge={
-                  tile.id === "courses" && progressPercentage > 0
-                    ? `${progressPercentage}%`
+          {moduleTiles.map((tile) => (
+            <ModuleTile
+              key={tile.id}
+              title={tile.title}
+              description={tile.description}
+              icon={tile.icon}
+              href={tile.href}
+              accent={tile.accent}
+              badge={
+                tile.id === "courses" && inProgressCourseCount > 0
+                  ? `${inProgressCourseCount} active`
+                  : tile.id === "courses" && completedCourseCount > 0
+                    ? `${completedCourseCount} done`
                     : tile.id === "giving" && gifts.length > 0
                       ? `${gifts.length} gifts`
                       : undefined
-                }
-              />
-            )
-          )}
+              }
+            />
+          ))}
         </div>
       </section>
 

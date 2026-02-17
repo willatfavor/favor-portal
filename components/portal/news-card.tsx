@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Clock, BookOpen, Heart, Calendar, Megaphone } from "lucide-react";
@@ -32,7 +33,7 @@ export function NewsCard({ item, variant = 'default', className }: NewsCardProps
   const CatIcon = CATEGORY_ICONS[item.category] ?? BookOpen;
 
   if (variant === 'compact') {
-    return (
+    const article = (
       <article
         className={cn(
           "flex gap-4 rounded-xl glass-pane p-4 glass-transition glass-hover",
@@ -59,9 +60,16 @@ export function NewsCard({ item, variant = 'default', className }: NewsCardProps
         </div>
       </article>
     );
+
+    if (!item.href) return article;
+    return (
+      <Link href={item.href} className="block">
+        {article}
+      </Link>
+    );
   }
 
-  return (
+  const article = (
     <article
       className={cn(
         "flex flex-col overflow-hidden rounded-2xl glass-pane glass-transition glass-hover",
@@ -101,5 +109,12 @@ export function NewsCard({ item, variant = 'default', className }: NewsCardProps
         </div>
       </div>
     </article>
+  );
+
+  if (!item.href) return article;
+  return (
+    <Link href={item.href} className="block">
+      {article}
+    </Link>
   );
 }

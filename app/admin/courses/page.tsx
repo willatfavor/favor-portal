@@ -43,6 +43,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraduationCap, PlusCircle, Pencil, Film, FileText, Upload, ImagePlus } from "lucide-react";
 import type { Json, Tables } from "@/types/database";
 
@@ -127,6 +128,9 @@ export default function AdminCoursesPage() {
   const [certificateRows, setCertificateRows] = useState<Tables<"user_course_certificates">[]>([]);
   const [quizAttemptRows, setQuizAttemptRows] = useState<Tables<"user_quiz_attempts">[]>([]);
   const [moduleEventRows, setModuleEventRows] = useState<Tables<"course_module_events">[]>([]);
+  const [workspaceTab, setWorkspaceTab] = useState<"courses" | "community" | "analytics">(
+    "courses"
+  );
 
   const canManageLms = hasAdminPermission("lms:manage", user?.permissions);
   const canViewAnalytics = hasAdminPermission("analytics:view", user?.permissions);
@@ -1199,7 +1203,18 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {canViewAnalytics && (
+      <Tabs
+        value={workspaceTab}
+        onValueChange={(value) => setWorkspaceTab(value as "courses" | "community" | "analytics")}
+      >
+        <TabsList>
+          <TabsTrigger value="courses">Courses & Modules</TabsTrigger>
+          <TabsTrigger value="community">Community</TabsTrigger>
+          {canViewAnalytics && <TabsTrigger value="analytics">Analytics</TabsTrigger>}
+        </TabsList>
+      </Tabs>
+
+      {canViewAnalytics && workspaceTab === "analytics" && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {[
             { label: "Active Learners", value: lmsAnalytics.activeLearners },
@@ -1217,11 +1232,16 @@ export default function AdminCoursesPage() {
           ))}
         </div>
       )}
+      {canViewAnalytics && workspaceTab === "analytics" && (
+        <p className="text-xs text-[#8b957b]">
+          Analytics panels are read-only insights. Manage cohorts and discussions from each course in the learner view.
+        </p>
+      )}
 
-      {canViewAnalytics && lmsAnalytics.topCourses.length > 0 && (
+      {canViewAnalytics && workspaceTab === "analytics" && lmsAnalytics.topCourses.length > 0 && (
         <Card className="glass-subtle border-0">
           <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-lg">Top Course Performance</CardTitle>
+            <CardTitle className="font-serif text-lg">Course Performance Snapshot</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {lmsAnalytics.topCourses.map((row) => (
@@ -1239,11 +1259,11 @@ export default function AdminCoursesPage() {
         </Card>
       )}
 
-      {canViewAnalytics && (
+      {canViewAnalytics && workspaceTab === "analytics" && (
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="glass-subtle border-0">
             <CardHeader className="pb-2">
-              <CardTitle className="font-serif text-lg">Learner Cohorts</CardTitle>
+              <CardTitle className="font-serif text-lg">Cohort Engagement (Read-only)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {lmsAnalytics.cohorts.length === 0 ? (
@@ -1263,7 +1283,7 @@ export default function AdminCoursesPage() {
 
           <Card className="glass-subtle border-0">
             <CardHeader className="pb-2">
-              <CardTitle className="font-serif text-lg">Module Drop-Off</CardTitle>
+              <CardTitle className="font-serif text-lg">Modules Needing Attention</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {lmsAnalytics.dropoffModules.length === 0 ? (
@@ -1304,10 +1324,10 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {canViewAnalytics && lmsAnalytics.watchBehavior.length > 0 && (
+      {canViewAnalytics && workspaceTab === "analytics" && lmsAnalytics.watchBehavior.length > 0 && (
         <Card className="glass-subtle border-0">
           <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-lg">Module Watch Behavior</CardTitle>
+            <CardTitle className="font-serif text-lg">Video Engagement Trends</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {lmsAnalytics.watchBehavior.slice(0, 8).map((row) => (
@@ -1326,7 +1346,56 @@ export default function AdminCoursesPage() {
         </Card>
       )}
 
-      <div className="grid gap-6">
+      {workspaceTab === "community" && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="glass-subtle border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-lg">Cohort Engagement</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {canViewAnalytics ? (
+                lmsAnalytics.cohorts.length === 0 ? (
+                  <p className="text-xs text-[#999999]">No cohort data yet.</p>
+                ) : (
+                  lmsAnalytics.cohorts.map((row) => (
+                    <div key={row.cohort} className="rounded-lg border border-[#c5ccc2]/50 px-3 py-2 text-xs">
+                      <p className="font-medium text-[#1a1a1a]">{row.cohort}</p>
+                      <p className="text-[#666666]">
+                        {row.learners} learners | {row.completions} module completions
+                      </p>
+                    </div>
+                  ))
+                )
+              ) : (
+                <p className="text-xs text-[#999999]">
+                  Analytics permission required to view cohort engagement insights.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-subtle border-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-serif text-lg">Community Workflow</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-[#666666]">
+              <p>
+                Cohorts and discussion threads are managed per course in the learner-facing community panel.
+              </p>
+              <p>
+                Recommended workflow: publish course {"->"} create cohorts {"->"} assign instructors {"->"} monitor
+                threads.
+              </p>
+              <p className="text-xs text-[#8b957b]">
+                Use the courses tab to manage module structure and publishing. Use analytics tab for drop-off, quiz, and
+                watch-time trends.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {workspaceTab === "courses" && <div className="grid gap-6">
         {courses.map((course) => {
           const courseModules = modulesByCourse[course.id] || [];
           return (
@@ -1615,7 +1684,7 @@ export default function AdminCoursesPage() {
             </Card>
           );
         })}
-      </div>
+      </div>}
 
       <Dialog open={Boolean(editingCourse)} onOpenChange={(open) => !open && setEditingCourse(null)}>
         <DialogContent className="max-w-xl glass-elevated border-0">

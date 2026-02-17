@@ -1032,6 +1032,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      portal_dashboard_overrides: {
+        Row: {
+          id: string;
+          role_key: string;
+          highlights: Json;
+          actions: Json;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          role_key: string;
+          highlights?: Json;
+          actions?: Json;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          role_key?: string;
+          highlights?: Json;
+          actions?: Json;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       foundation_grants: {
         Row: {
           id: string;

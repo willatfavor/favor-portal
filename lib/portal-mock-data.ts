@@ -10,6 +10,7 @@ export interface NewsItem {
   imageUrl?: string;
   date: string;
   readTime: string;
+  href?: string;
 }
 
 export interface Notification {
@@ -41,6 +42,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Impact Story',
     date: '2026-01-28',
     readTime: '4 min',
+    href: '/content?type=story',
   },
   {
     id: 'news-2',
@@ -49,6 +51,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Event',
     date: '2026-01-25',
     readTime: '2 min',
+    href: '/content?tag=event',
   },
   {
     id: 'news-3',
@@ -57,6 +60,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Resource',
     date: '2026-01-20',
     readTime: '8 min',
+    href: '/content?type=report',
   },
   {
     id: 'news-4',
@@ -65,6 +69,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Update',
     date: '2026-01-15',
     readTime: '3 min',
+    href: '/courses',
   },
   {
     id: 'news-5',
@@ -73,6 +78,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Prayer',
     date: '2026-01-10',
     readTime: '2 min',
+    href: '/content?type=prayer',
   },
   {
     id: 'news-6',
@@ -81,6 +87,7 @@ export const NEWS_FEED: NewsItem[] = [
     category: 'Update',
     date: '2026-01-05',
     readTime: '5 min',
+    href: '/content?tag=ambassador',
   },
 ];
 
@@ -167,7 +174,7 @@ export const MODULE_TILES: ModuleTileData[] = [
     title: 'Impact Reports',
     description: 'See how your partnership is changing lives across nations.',
     icon: 'TrendingUp',
-    href: '/giving/history',
+    href: '/giving/impact',
     color: '#2b4d24',
     audiences: ["individual", "major_donor", "church", "foundation", "daf", "ambassador", "volunteer"],
     accent: "gold",
@@ -177,7 +184,7 @@ export const MODULE_TILES: ModuleTileData[] = [
     title: 'Support',
     description: 'Get help from our partner support team.',
     icon: 'MessageCircle',
-    href: '#support',
+    href: '/support',
     color: '#8b957b',
     audiences: "all",
     accent: "stone",
