@@ -103,7 +103,8 @@ export async function proxy(request: NextRequest) {
   }
 
   // For portal routes, check authentication
-  if (pathname.startsWith('/dashboard') || 
+  if (pathname === '/onboarding' ||
+      pathname.startsWith('/dashboard') ||
       pathname.startsWith('/giving') || 
       pathname.startsWith('/courses') || 
       pathname.startsWith('/content') ||
@@ -127,6 +128,21 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Check for onboarding requirement
+    const { data: user } = await supabase
+      .from('users')
+      .select('onboarding_required')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (user?.onboarding_required && pathname !== '/onboarding') {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
+    }
+
+    // If onboarding is completed but user is on onboarding page, redirect to dashboard
+    if (!user?.onboarding_required && pathname === '/onboarding') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   return NextResponse.next();
